@@ -1,13 +1,12 @@
 // -*- mode:C++; tab-width:4; c-basic-offset:4; indent-tabs-mode:nil -*-
 
 /**
- * @ingroup kinematics-dynamics-examples
- * \defgroup screwTheoryTrajectoryExample screwTheoryTrajectoryExample
+ * @ingroup gait-experiments-programs
+ * \defgroup squatAndBalance squatAndBalance
  *
  * <b>Building</b>
  *
 \verbatim
-cd examples/cpp/exampleSquatBalance/
 mkdir build; cd build; cmake ..
 make -j$(nproc)
 \endverbatim
@@ -25,11 +24,11 @@ make -j$(nproc)
 [on terminal 2] teoSim
 [on terminal 3] yarpdev --device BasicCartesianControl --name /teoSim/leftLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/leftLeg-Kinematics.ini--local /BasicCartesianControl/teoSim/leftLeg --remote /teoSim/leftLeg --ik st --invKinStrategy humanoidGait
 [on terminal 4] yarpdev --device BasicCartesianControl --name /teoSim/rightLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/rightLeg-Kinematics.ini--local /BasicCartesianControl/teoSim/rightLeg --remote /teoSim/rightLeg --ik st --invKinStrategy humanoidGait
-[on terminal 5] ./cartesianSquatBalance --x 0.045 # move robot's CoM 4.5 cm down
-[on terminal 5] ./cartesianSquatBalance --y 0.1 # move CoM 10 cm to its left
-[on terminal 5] ./cartesianSquatBalance --y -0.2 # move CoM 20 cm to its right
-[on terminal 5] ./cartesianSquatBalance --y 0.1 # move CoM 10 cm back to its left, now centered
-[on terminal 5] ./cartesianSquatBalance --z -0.045 # return to initial pose
+[on terminal 5] ./squatAndBalance --x 0.045 # move robot's CoM 4.5 cm down
+[on terminal 5] ./squatAndBalance --y 0.1 # move CoM 10 cm to its left
+[on terminal 5] ./squatAndBalance --y -0.2 # move CoM 20 cm to its right
+[on terminal 5] ./squatAndBalance --y 0.1 # move CoM 10 cm back to its left, now centered
+[on terminal 5] ./squatAndBalance --z -0.045 # return to initial pose
 \endverbatim
  */
 
