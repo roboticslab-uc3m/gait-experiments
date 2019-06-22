@@ -39,9 +39,10 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake
 find_package(YCM 0.10 REQUIRED)
 find_package(YARP 3.1 REQUIRED COMPONENTS OS dev)
 find_package(COLOR_DEBUG REQUIRED)
+find_package(orocos_kdl 1.4 REQUIRED) # before kin-dyn due to ROS installation
+find_package(ROBOTICSLAB_KINEMATICS_DYNAMICS REQUIRED)
 
 # Soft dependencies.
-find_package(orocos_kdl 1.4 QUIET)
 #find_package(GTestSources 1.6.0 QUIET)
 #find_package(Doxygen QUIET)
 
