@@ -52,6 +52,7 @@ make -j$(nproc) && sudo make install
 
 #include "LimitChecker.hpp"
 
+#define DEFAULT_SQUAT_DIFF 0.01 // [m]
 #define DEFAULT_FOOT_SEP 0.05 // [m]
 #define DEFAULT_TRAJ_VEL 0.1 // [m/s]
 #define DEFAULT_TRAJ_ACC 0.2 // [m/s^2]
@@ -77,26 +78,34 @@ int main(int argc, char *argv[])
     rf.configure(argc, argv);
 
     std::string robotPrefix = rf.check("prefix", yarp::os::Value("/teoSim")).asString();
+
+    double squatDiff = rf.check("squat", yarp::os::Value(DEFAULT_SQUAT_DIFF), "squat distance [m]").asFloat64();
     double footSep = rf.check("sep", yarp::os::Value(DEFAULT_FOOT_SEP), "foot separation [m]").asFloat64();
     double trajVel = rf.check("vel", yarp::os::Value(DEFAULT_TRAJ_VEL), "velocity [m/s]").asFloat64();
     double trajAcc = rf.check("acc", yarp::os::Value(DEFAULT_TRAJ_ACC), "acceleration [m/s^2]").asFloat64();
     double period = rf.check("period", yarp::os::Value(DEFAULT_CMD_PERIOD), "command period [s]").asFloat64();
 
+    if (squatDiff < 0.0)
+    {
+        CD_ERROR("Illegal argument: '--squat' must be greater than or equal to '0' (was '%f').\n", squatDiff);
+        return 1;
+    }
+
     if (footSep <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--footSep' must be greater than '0' (was '%f').\n", footSep);
+        CD_ERROR("Illegal argument: '--sep' must be greater than '0' (was '%f').\n", footSep);
         return 1;
     }
 
     if (trajVel <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--trajVel' must be greater than '0' (was '%f').\n", trajVel);
+        CD_ERROR("Illegal argument: '--vel' must be greater than '0' (was '%f').\n", trajVel);
         return 1;
     }
 
     if (trajAcc <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--trajAcc' must be greater than '0' (was '%f').\n", trajAcc);
+        CD_ERROR("Illegal argument: '--acc' must be greater than '0' (was '%f').\n", trajAcc);
         return 1;
     }
 
