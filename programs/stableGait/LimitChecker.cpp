@@ -7,23 +7,16 @@ LimitChecker::LimitChecker(rl::ICartesianControl * _leftLeg, rl::ICartesianContr
       rightLeg(_rightLeg),
       squat(0.0),
       step(0.0),
-      length(0.0),
-      width(0.0),
-      margin(0.0),
-      sep(0.0),
       tolerance(DEFAULT_TOLERANCE),
       preset(false)
 {}
 
-void LimitChecker::configure(double _length, double _width, double _margin, double _sep, double _tolerance)
+void LimitChecker::configure(FootSpec _footSpec, double _tolerance)
 {
-    length = _length;
-    width = _width;
-    margin = _margin;
-    sep = _sep;
+    footSpec = _footSpec;
     tolerance = _tolerance;
 
-    // TODO: validate geometric parameters
+    // TODO: validate geometric parameters?
 
     leftLeg->stat(initialLeft);
     rightLeg->stat(initialRight);
@@ -68,7 +61,7 @@ void LimitChecker::iterateSquat()
 void LimitChecker::iterateStep()
 {
     std::vector<double> x = initialRight;
-    x[1] = -(margin + sep + (width / 2.0));
+    x[1] = -(footSpec.margin + footSpec.sep + (footSpec.width / 2.0));
     std::vector<double> q;
 
     do
@@ -77,5 +70,5 @@ void LimitChecker::iterateStep()
     }
     while (rightLeg->inv(x, q));
 
-    step = (x[0] - tolerance) + length - margin - (width / 2.0);
+    step = (x[0] - tolerance) + footSpec.length - footSpec.margin - (footSpec.width / 2.0);
 }

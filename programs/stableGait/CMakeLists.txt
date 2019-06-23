@@ -1,6 +1,9 @@
 add_executable(stableGait main.cpp
                           LimitChecker.hpp
-                          LimitChecker.cpp)
+                          LimitChecker.cpp
+                          StepGenerator.hpp
+                          StepGenerator.cpp
+                          FootSpec.hpp)
 
 target_link_libraries(stableGait YARP::YARP_OS
                                  YARP::YARP_init

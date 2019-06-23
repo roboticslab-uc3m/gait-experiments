@@ -7,6 +7,8 @@
 
 #include <ICartesianControl.h>
 
+#include "FootSpec.hpp"
+
 #define DEFAULT_TOLERANCE 0.005 // [m]
 
 namespace rl = roboticslab;
@@ -19,7 +21,7 @@ class LimitChecker
 public:
     LimitChecker(rl::ICartesianControl * leftLeg, rl::ICartesianControl * rightLeg);
 
-    void configure(double length, double width, double margin, double sep, double tolerance = DEFAULT_TOLERANCE);
+    void configure(FootSpec footSpec, double tolerance = DEFAULT_TOLERANCE);
     void offsetSquat(double offset);
     void estimateParameters(double * squat, double * step);
 
@@ -36,10 +38,7 @@ private:
     double squat;
     double step;
 
-    double length;     // foot length
-    double width;     // foot width
-    double margin;    // distance from CoM projection and foot edges
-    double sep;       // separation between feet
+    FootSpec footSpec;
     double tolerance; // iteration magnitude
 
     bool preset;
