@@ -52,15 +52,16 @@ make -j$(nproc) && sudo make install
 
 #include "FootSpec.hpp"
 #include "LimitChecker.hpp"
+#include "StepGenerator.hpp"
 
-#define DEFAULT_SQUAT_DIFF 0.01 // [m]
 #define DEFAULT_TRAJ_VEL 0.1 // [m/s]
 #define DEFAULT_TRAJ_ACC 0.2 // [m/s^2]
 #define DEFAULT_CMD_PERIOD 0.05 // [s]
+#define DEFAULT_SQUAT_DIFF 0.01 // [m]
 #define DEFAULT_FOOT_LENGTH 0.245 // [m]
 #define DEFAULT_FOOT_WIDTH 0.14 // [m]
 #define DEFAULT_FOOT_MARGIN 0.01 // [m]
-#define DEFAULT_FOOT_SEP 0.05 // [m]
+#define DEFAULT_FOOT_SEP 0.06 // [m]
 
 namespace rl = roboticslab;
 
@@ -83,18 +84,19 @@ int main(int argc, char *argv[])
 
     std::string robotPrefix = rf.check("prefix", yarp::os::Value("/teoSim")).asString();
 
-    double squatDiff = rf.check("squat", yarp::os::Value(DEFAULT_SQUAT_DIFF), "squat distance [m]").asFloat64();
+    double distance = rf.check("distance", yarp::os::Value(1.0), "distance to travel [m]").asFloat64();
     double trajVel = rf.check("vel", yarp::os::Value(DEFAULT_TRAJ_VEL), "velocity [m/s]").asFloat64();
     double trajAcc = rf.check("acc", yarp::os::Value(DEFAULT_TRAJ_ACC), "acceleration [m/s^2]").asFloat64();
     double period = rf.check("period", yarp::os::Value(DEFAULT_CMD_PERIOD), "command period [s]").asFloat64();
+    double squatDiff = rf.check("squat", yarp::os::Value(DEFAULT_SQUAT_DIFF), "squat distance [m]").asFloat64();
     double footLength = rf.check("length", yarp::os::Value(DEFAULT_FOOT_LENGTH), "foot length [m]").asFloat64();
     double footWidth = rf.check("width", yarp::os::Value(DEFAULT_FOOT_WIDTH), "foot width [m]").asFloat64();
     double footMargin = rf.check("margin", yarp::os::Value(DEFAULT_FOOT_MARGIN), "foot stability margin [m]").asFloat64();
     double footSep = rf.check("sep", yarp::os::Value(DEFAULT_FOOT_SEP), "foot separation [m]").asFloat64();
 
-    if (squatDiff < 0.0)
+    if (distance <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--squat' must be greater than or equal to '0' (was '%f').\n", squatDiff);
+        CD_ERROR("Illegal argument: '--distance' must be greater than '0' (was '%f').\n", distance);
         return 1;
     }
 
@@ -113,6 +115,12 @@ int main(int argc, char *argv[])
     if (period <= 0.0)
     {
         CD_ERROR("Illegal argument: '--period' must be greater than '0' (was '%f').\n", period);
+        return 1;
+    }
+
+    if (squatDiff < 0.0)
+    {
+        CD_ERROR("Illegal argument: '--squat' must be greater than or equal to '0' (was '%f').\n", squatDiff);
         return 1;
     }
 
@@ -200,6 +208,14 @@ int main(int argc, char *argv[])
 
     // Analyze motion limits.
 
+    std::vector<double> x_leftInitial;
+
+    if (!iCartesianControlLeftLeg->stat(x_leftInitial))
+    {
+        CD_ERROR("Cannot stat left leg.\n");
+        return 1;
+    }
+
     FootSpec footSpec;
     footSpec.length = footLength;
     footSpec.width = footWidth;
@@ -213,6 +229,32 @@ int main(int argc, char *argv[])
     limitChecker.estimateParameters(&squat, &step);
 
     CD_INFO("squat: %f, step: %f\n", squat, step);
+
+    // Generate steps.
+
+    StepGenerator stepGenerator(footSpec);
+    stepGenerator.configure(step, x_leftInitial[1]);
+
+    std::vector<KDL::Frame> stepsLeft, stepsRight;
+    stepGenerator.generate(distance, stepsLeft, stepsRight);
+
+    CD_INFO("Left leg: %d steps:", stepsLeft.size());
+
+    for (int i = 0; i < stepsLeft.size(); i++)
+    {
+        CD_INFO_NO_HEADER(" %f", stepsLeft[i].p.x());
+    }
+
+    CD_INFO_NO_HEADER("\n");
+
+    CD_INFO("Right leg: %d steps:", stepsRight.size());
+
+    for (int i = 0; i < stepsRight.size(); i++)
+    {
+        CD_INFO_NO_HEADER(" %f", stepsRight[i].p.x());
+    }
+
+    CD_INFO_NO_HEADER("\n");
 
     leftLegDevice.close();
     rightLegDevice.close();
