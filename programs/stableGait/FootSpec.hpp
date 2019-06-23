@@ -8,7 +8,9 @@ struct FootSpec
     double length;
     double width;
     double margin;
+    double stable;
     double sep;
+    double hop;
 };
 
 #endif // __FOOT_SPEC_HPP__

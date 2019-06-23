@@ -13,13 +13,14 @@ class StepGenerator
 {
 public:
     StepGenerator(FootSpec footSpec);
-    void configure(double step, double initialSep);
+    void configure(double squat, double step, const KDL::Frame & initialPose);
     void generate(double distance, std::vector<KDL::Frame> & stepsLeft, std::vector<KDL::Frame> & stepsRight);
 
 private:
     FootSpec footSpec;
+    double squat;
     double step;
-    double initialSep;
+    KDL::Frame initialPose;
 };
 
 #endif // __STEP_GENERATOR_HPP__

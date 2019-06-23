@@ -57,11 +57,12 @@ make -j$(nproc) && sudo make install
 #define DEFAULT_TRAJ_VEL 0.1 // [m/s]
 #define DEFAULT_TRAJ_ACC 0.2 // [m/s^2]
 #define DEFAULT_CMD_PERIOD 0.05 // [s]
-#define DEFAULT_SQUAT_DIFF 0.01 // [m]
 #define DEFAULT_FOOT_LENGTH 0.245 // [m]
 #define DEFAULT_FOOT_WIDTH 0.14 // [m]
 #define DEFAULT_FOOT_MARGIN 0.01 // [m]
+#define DEFAULT_FOOT_STABLE 0.03 // [m]
 #define DEFAULT_FOOT_SEP 0.06 // [m]
+#define DEFAULT_FOOT_HOP 0.01 // [m]
 
 namespace rl = roboticslab;
 
@@ -88,11 +89,12 @@ int main(int argc, char *argv[])
     double trajVel = rf.check("vel", yarp::os::Value(DEFAULT_TRAJ_VEL), "velocity [m/s]").asFloat64();
     double trajAcc = rf.check("acc", yarp::os::Value(DEFAULT_TRAJ_ACC), "acceleration [m/s^2]").asFloat64();
     double period = rf.check("period", yarp::os::Value(DEFAULT_CMD_PERIOD), "command period [s]").asFloat64();
-    double squatDiff = rf.check("squat", yarp::os::Value(DEFAULT_SQUAT_DIFF), "squat distance [m]").asFloat64();
     double footLength = rf.check("length", yarp::os::Value(DEFAULT_FOOT_LENGTH), "foot length [m]").asFloat64();
     double footWidth = rf.check("width", yarp::os::Value(DEFAULT_FOOT_WIDTH), "foot width [m]").asFloat64();
-    double footMargin = rf.check("margin", yarp::os::Value(DEFAULT_FOOT_MARGIN), "foot stability margin [m]").asFloat64();
+    double footMargin = rf.check("margin", yarp::os::Value(DEFAULT_FOOT_MARGIN), "foot stability outer margin [m]").asFloat64();
+    double footStable = rf.check("stable", yarp::os::Value(DEFAULT_FOOT_STABLE), "foot stability inner margin [m]").asFloat64();
     double footSep = rf.check("sep", yarp::os::Value(DEFAULT_FOOT_SEP), "foot separation [m]").asFloat64();
+    double footHop = rf.check("hop", yarp::os::Value(DEFAULT_FOOT_HOP), "hop [m]").asFloat64();
 
     if (distance <= 0.0)
     {
@@ -118,12 +120,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (squatDiff < 0.0)
-    {
-        CD_ERROR("Illegal argument: '--squat' must be greater than or equal to '0' (was '%f').\n", squatDiff);
-        return 1;
-    }
-
     if (footLength <= 0.0)
     {
         CD_ERROR("Illegal argument: '--length' must be greater than '0' (was '%f').\n", footLength);
@@ -142,9 +138,21 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    if (footStable <= 0.0)
+    {
+        CD_ERROR("Illegal argument: '--stable' must be greater than '0' (was '%f').\n", footStable);
+        return 1;
+    }
+
     if (footSep <= 0.0)
     {
         CD_ERROR("Illegal argument: '--sep' must be greater than '0' (was '%f').\n", footSep);
+        return 1;
+    }
+
+    if (footHop < 0.0)
+    {
+        CD_ERROR("Illegal argument: '--hop' must be greater than or equal to '0' (was '%f').\n", footHop);
         return 1;
     }
 
@@ -220,7 +228,9 @@ int main(int argc, char *argv[])
     footSpec.length = footLength;
     footSpec.width = footWidth;
     footSpec.margin = footMargin;
+    footSpec.stable = footStable;
     footSpec.sep = footSep;
+    footSpec.hop = footHop;
 
     LimitChecker limitChecker(iCartesianControlLeftLeg, iCartesianControlRightLeg);
     limitChecker.configure(footSpec);
@@ -233,25 +243,27 @@ int main(int argc, char *argv[])
     // Generate steps.
 
     StepGenerator stepGenerator(footSpec);
-    stepGenerator.configure(step, x_leftInitial[1]);
+    stepGenerator.configure(squat, step, rl::KdlVectorConverter::vectorToFrame(x_leftInitial));
 
-    std::vector<KDL::Frame> stepsLeft, stepsRight;
-    stepGenerator.generate(distance, stepsLeft, stepsRight);
+    std::vector<KDL::Frame> steps, com;
+    stepGenerator.generate(distance, steps, com);
 
-    CD_INFO("Left leg: %d steps:", stepsLeft.size());
+    CD_INFO("Steps (%d, [x, y]):", steps.size());
 
-    for (int i = 0; i < stepsLeft.size(); i++)
+    for (int i = 0; i < steps.size(); i++)
     {
-        CD_INFO_NO_HEADER(" %f", stepsLeft[i].p.x());
+        const KDL::Vector & p = steps[i].p;
+        CD_INFO_NO_HEADER(" [%f %f]", p.x(), p.y());
     }
 
     CD_INFO_NO_HEADER("\n");
 
-    CD_INFO("Right leg: %d steps:", stepsRight.size());
+    CD_INFO("CoM (%d, [x, y, z]):", com.size());
 
-    for (int i = 0; i < stepsRight.size(); i++)
+    for (int i = 0; i < com.size(); i++)
     {
-        CD_INFO_NO_HEADER(" %f", stepsRight[i].p.x());
+        const KDL::Vector & p = com[i].p;
+        CD_INFO_NO_HEADER(" [%f %f %f]", p.x(), p.y(), p.z());
     }
 
     CD_INFO_NO_HEADER("\n");
