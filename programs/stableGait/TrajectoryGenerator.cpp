@@ -38,8 +38,10 @@ void TrajectoryGenerator::generate(KDL::Trajectory_Composite & comTraj, KDL::Tra
 
     pathSquatDown->Add(com[0]);
     pathSquatDown->Add(com[1]);
+    pathSquatDown->Add(com[2]);
     pathSquatDown->Finish();
 
+    pathSquatUp->Add(com[com.size() - 3]);
     pathSquatUp->Add(com[com.size() - 2]);
     pathSquatUp->Add(com[com.size() - 1]);
     pathSquatUp->Finish();
@@ -59,7 +61,7 @@ void TrajectoryGenerator::generate(KDL::Trajectory_Composite & comTraj, KDL::Tra
     int i, stepN;
     double duration0;
 
-    for (i = 1, stepN = (i - 1) / 3, duration0 = getDuration(com[i - 1].p - com[i].p); i < com.size() - 2; i += 3)
+    for (i = 2, stepN = (i - 1) / 3, duration0 = getDuration(com[i - 1].p - com[i].p); i < com.size() - 3; i += 3)
     {
         KDL::Path_RoundedComposite * pathCom1 = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
         pathCom1->Add(com[i]);

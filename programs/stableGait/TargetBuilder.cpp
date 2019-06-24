@@ -56,8 +56,17 @@ bool TargetBuilder::validate(Targets & vLeft, Targets & vRight)
 
     for (int i = 0; i < vLeft.size(); i++)
     {
-        if (!iCartLeft->inv(vLeft[i], q) || !iCartRight->inv(vRight[i], q))
+        if (!iCartLeft->inv(vLeft[i], q))
         {
+            CD_WARNING("IK failing at left leg: %f %f %f %f %f %f\n",
+                vLeft[i][0], vLeft[i][1], vLeft[i][2], vLeft[i][3], vLeft[i][4], vLeft[i][5]);
+            return false;
+        }
+
+        if (!iCartRight->inv(vRight[i], q))
+        {
+            CD_WARNING("IK failing at right leg: %f %f %f %f %f %f\n",
+                vRight[i][0], vRight[i][1], vRight[i][2], vRight[i][3], vRight[i][4], vRight[i][5]);
             return false;
         }
     }

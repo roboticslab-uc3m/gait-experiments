@@ -83,6 +83,8 @@ int main(int argc, char *argv[])
     yarp::os::ResourceFinder rf;
     rf.configure(argc, argv);
 
+    CD_DEBUG("%s\n", rf.toString().c_str());
+
     std::string robotPrefix = rf.check("prefix", yarp::os::Value("/teoSim")).asString();
 
     double distance = rf.check("distance", yarp::os::Value(1.0), "distance to travel [m]").asFloat64();
@@ -223,6 +225,8 @@ int main(int argc, char *argv[])
         CD_ERROR("Cannot stat left leg.\n");
         return 1;
     }
+
+    x_leftInitial[2] += KDL::epsilon; // initial pose is hard to attain
 
     FootSpec footSpec;
     footSpec.length = footLength;

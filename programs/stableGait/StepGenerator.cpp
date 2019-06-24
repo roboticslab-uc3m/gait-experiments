@@ -46,7 +46,8 @@ void StepGenerator::generate(double distance, std::vector<KDL::Frame> & steps, s
     steps.push_back(KDL::Frame(rot, KDL::Vector(0, initialSep, 0)));
 
     com.push_back(KDL::Frame(KDL::Vector(0, 0, initialSquat)));
-    com.push_back(KDL::Frame(KDL::Vector(0, stableSep, maxSquat)));
+    com.push_back(KDL::Frame(KDL::Vector(0, 0, hopSquat)));
+    com.push_back(KDL::Frame(KDL::Vector(0, stableSep, hopSquat)));
 
     if (distance <= step)
     {
@@ -57,7 +58,8 @@ void StepGenerator::generate(double distance, std::vector<KDL::Frame> & steps, s
 
         com.push_back(KDL::Frame(KDL::Vector(stepFwd, marginSep, maxSquat)));
         com.push_back(KDL::Frame(KDL::Vector(distance - marginFwd, -marginSep, maxSquat)));
-        com.push_back(KDL::Frame(KDL::Vector(distance, -stableSep, maxSquat)));
+        com.push_back(KDL::Frame(KDL::Vector(distance, -stableSep, hopSquat)));
+        com.push_back(KDL::Frame(KDL::Vector(distance, 0, hopSquat)));
         com.push_back(KDL::Frame(KDL::Vector(distance, 0, initialSquat)));
 
         return;
@@ -84,7 +86,8 @@ void StepGenerator::generate(double distance, std::vector<KDL::Frame> & steps, s
 
                 com.push_back(KDL::Frame(KDL::Vector(previousTravelled + stepFwd, marginSep, maxSquat)));
                 com.push_back(KDL::Frame(KDL::Vector(travelled - marginFwd, -marginSep, maxSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled, -stableSep, maxSquat)));
+                com.push_back(KDL::Frame(KDL::Vector(travelled, -stableSep, hopSquat)));
+                com.push_back(KDL::Frame(KDL::Vector(travelled, 0, hopSquat)));
                 com.push_back(KDL::Frame(KDL::Vector(travelled, 0, initialSquat)));
             }
             else
@@ -94,7 +97,8 @@ void StepGenerator::generate(double distance, std::vector<KDL::Frame> & steps, s
 
                 com.push_back(KDL::Frame(KDL::Vector(previousTravelled + stepFwd, -marginSep, maxSquat)));
                 com.push_back(KDL::Frame(KDL::Vector(travelled - marginFwd, marginSep, maxSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled, stableSep, maxSquat)));
+                com.push_back(KDL::Frame(KDL::Vector(travelled, stableSep, hopSquat)));
+                com.push_back(KDL::Frame(KDL::Vector(travelled, 0, hopSquat)));
                 com.push_back(KDL::Frame(KDL::Vector(travelled, 0, initialSquat)));
             }
 
