@@ -278,12 +278,12 @@ int main(int argc, char *argv[])
 
     CD_INFO("CoM: %f [s], left: %f [s], right: %f [s]\n", comTraj.Duration(), leftTraj.Duration(), rightTraj.Duration());
 
-    double min = std::min(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
-    double max = std::max(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
+    double minDuration = std::min(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
+    double maxDuration = std::max(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
 
-    if (max - min > 1.0)
+    if (maxDuration - minDuration > 1.0)
     {
-        CD_ERROR("Duration difference exceeds 1.0 seconds.\n");
+        CD_ERROR("Duration difference exceeds 1.0 seconds: %f.\n", maxDuration - minDuration);
         return 1;
     }
 
@@ -298,7 +298,29 @@ int main(int argc, char *argv[])
     if (!targetBuilder.validate(pointsLeft, pointsRight))
     {
         CD_ERROR("IK failed.\n");
-        return 1;
+        //return 1;
+    }
+
+    // Configure worker.
+
+    yarp::os::TimerSettings timerSettings(period, maxDuration / period, maxDuration);
+
+    yarp::os::Timer::TimerCallback callback = [&](const yarp::os::YarpTimerEvent & event)
+    {
+        iCartesianControlLeftLeg->movi(pointsLeft[event.runCount]);
+        iCartesianControlRightLeg->movi(pointsRight[event.runCount]);
+
+        return true;
+    };
+
+    yarp::os::Timer timer(timerSettings, callback, true);
+
+    // Execute trajectory.
+
+    if (timer.start())
+    {
+        yarp::os::Time::delay(maxDuration);
+        timer.stop();
     }
 
     return 0;
