@@ -52,6 +52,7 @@ make -j$(nproc) && sudo make install
 #include "LimitChecker.hpp"
 #include "StepGenerator.hpp"
 #include "TrajectoryGenerator.hpp"
+#include "TargetBuilder.hpp"
 
 #define DEFAULT_TRAJ_VEL 0.175 // [m/s]
 #define DEFAULT_TRAJ_ACC 5.0 // [m/s^2]
@@ -283,6 +284,20 @@ int main(int argc, char *argv[])
     if (max - min > 1.0)
     {
         CD_ERROR("Duration difference exceeds 1.0 seconds.\n");
+        return 1;
+    }
+
+    // Build target points.
+
+    TargetBuilder targetBuilder(iCartesianControlLeftLeg, iCartesianControlRightLeg);
+    targetBuilder.configure(&comTraj, &leftTraj, &rightTraj);
+
+    TargetBuilder::Targets pointsLeft, pointsRight;
+    targetBuilder.build(period, pointsLeft, pointsRight);
+
+    if (!targetBuilder.validate(pointsLeft, pointsRight))
+    {
+        CD_ERROR("IK failed.\n");
         return 1;
     }
 
