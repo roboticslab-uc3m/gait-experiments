@@ -40,11 +40,7 @@ make -j$(nproc) && sudo make install
 #include <yarp/dev/PolyDriver.h>
 
 #include <kdl/frames.hpp>
-#include <kdl/trajectory_segment.hpp>
 #include <kdl/trajectory_composite.hpp>
-#include <kdl/path_line.hpp>
-#include <kdl/rotational_interpolation_sa.hpp>
-#include <kdl/velocityprofile_trap.hpp>
 
 #include <ICartesianControl.h>
 #include <KdlVectorConverter.hpp>
@@ -53,6 +49,7 @@ make -j$(nproc) && sudo make install
 #include "FootSpec.hpp"
 #include "LimitChecker.hpp"
 #include "StepGenerator.hpp"
+#include "TrajectoryGenerator.hpp"
 
 #define DEFAULT_TRAJ_VEL 0.1 // [m/s]
 #define DEFAULT_TRAJ_ACC 0.2 // [m/s^2]
@@ -267,6 +264,14 @@ int main(int argc, char *argv[])
     }
 
     CD_INFO_NO_HEADER("\n");
+
+    // Generate trajectories.
+
+    TrajectoryGenerator trajectoryGenerator(footSpec, distance, trajVel, trajAcc);
+    trajectoryGenerator.configure(steps, com);
+
+    KDL::Trajectory_Composite comTraj, leftTraj, rightTraj;
+    trajectoryGenerator.generate(comTraj, leftTraj, rightTraj);
 
     leftLegDevice.close();
     rightLegDevice.close();
