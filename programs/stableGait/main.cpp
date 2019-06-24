@@ -28,6 +28,8 @@ make -j$(nproc) && sudo make install
 \endverbatim
  */
 
+#include <cmath>
+
 #include <string>
 #include <vector>
 
@@ -51,13 +53,13 @@ make -j$(nproc) && sudo make install
 #include "StepGenerator.hpp"
 #include "TrajectoryGenerator.hpp"
 
-#define DEFAULT_TRAJ_VEL 0.1 // [m/s]
-#define DEFAULT_TRAJ_ACC 0.2 // [m/s^2]
+#define DEFAULT_TRAJ_VEL 0.175 // [m/s]
+#define DEFAULT_TRAJ_ACC 5.0 // [m/s^2]
 #define DEFAULT_CMD_PERIOD 0.05 // [s]
 #define DEFAULT_FOOT_LENGTH 0.245 // [m]
 #define DEFAULT_FOOT_WIDTH 0.14 // [m]
-#define DEFAULT_FOOT_MARGIN 0.01 // [m]
-#define DEFAULT_FOOT_STABLE 0.03 // [m]
+#define DEFAULT_FOOT_MARGIN 0.02 // [m]
+#define DEFAULT_FOOT_STABLE 0.04 // [m]
 #define DEFAULT_FOOT_SEP 0.06 // [m]
 #define DEFAULT_FOOT_HOP 0.01 // [m]
 
@@ -273,8 +275,16 @@ int main(int argc, char *argv[])
     KDL::Trajectory_Composite comTraj, leftTraj, rightTraj;
     trajectoryGenerator.generate(comTraj, leftTraj, rightTraj);
 
-    leftLegDevice.close();
-    rightLegDevice.close();
+    CD_INFO("CoM: %f [s], left: %f [s], right: %f [s]\n", comTraj.Duration(), leftTraj.Duration(), rightTraj.Duration());
+
+    double min = std::min(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
+    double max = std::max(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
+
+    if (max - min > 1.0)
+    {
+        CD_ERROR("Duration difference exceeds 1.0 seconds.\n");
+        return 1;
+    }
 
     return 0;
 }
