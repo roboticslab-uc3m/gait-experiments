@@ -19,6 +19,7 @@ public:
 
 private:
     double getDuration(const KDL::Vector & v);
+    KDL::Frame makeHop(const KDL::Frame & H1, const KDL::Frame & H2);
 
     FootSpec footSpec;
     double distance;

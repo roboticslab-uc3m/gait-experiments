@@ -47,38 +47,100 @@ void TrajectoryGenerator::generate(KDL::Trajectory_Composite & comTraj, KDL::Tra
     KDL::VelocityProfile * profSquatDown = new KDL::VelocityProfile_TrapHalf(vel, acc, true);
     KDL::VelocityProfile * profSquatUp = new KDL::VelocityProfile_TrapHalf(vel, acc, false);
 
-    KDL::VelocityProfile_Rectangular profStep(vel);
-
     comTraj.Add(new KDL::Trajectory_Segment(pathSquatDown, profSquatDown, DEFAULT_SQUAT_DURATION));
 
-    for (int i = 1; i < com.size() - 2; i = i + 3)
+    rightTraj.Add(new KDL::Trajectory_Stationary(profSquatDown->Duration(), steps[0]));
+    leftTraj.Add(new KDL::Trajectory_Stationary(profSquatDown->Duration(), steps[1]));
+
+    KDL::VelocityProfile_Rectangular profCom(vel);
+    KDL::VelocityProfile_Trap profStep(vel, acc);
+
+    bool movingRightFoot = true;
+    int i, stepN;
+    double duration0;
+
+    for (i = 1, stepN = (i - 1) / 3, duration0 = getDuration(com[i - 1].p - com[i].p); i < com.size() - 2; i += 3)
     {
         KDL::Path_RoundedComposite * pathCom1 = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
         pathCom1->Add(com[i]);
         pathCom1->Add(com[i + 1]);
         pathCom1->Finish();
 
-        comTraj.Add(new KDL::Trajectory_Segment(pathCom1, profStep.Clone(), getDuration(com[i + 1].p - com[i].p)));
+        double duration1 = getDuration(com[i + 1].p - com[i].p);
+        comTraj.Add(new KDL::Trajectory_Segment(pathCom1, profCom.Clone(), duration1));
 
         KDL::Path_RoundedComposite * pathCom2 = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
         pathCom2->Add(com[i + 1]);
         pathCom2->Add(com[i + 2]);
         pathCom2->Finish();
 
-        comTraj.Add(new KDL::Trajectory_Segment(pathCom2, profStep.Clone(), getDuration(com[i + 2].p - com[i + 1].p)));
+        double duration2 = getDuration(com[i + 2].p - com[i + 1].p);
+        comTraj.Add(new KDL::Trajectory_Segment(pathCom2, profCom.Clone(), duration2));
 
         KDL::Path_RoundedComposite * pathCom3 = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
         pathCom3->Add(com[i + 2]);
         pathCom3->Add(com[i + 3]);
         pathCom3->Finish();
 
-        comTraj.Add(new KDL::Trajectory_Segment(pathCom3, profStep.Clone(), getDuration(com[i + 3].p - com[i + 2].p)));
+        double duration3 = getDuration(com[i + 3].p - com[i + 2].p);
+        comTraj.Add(new KDL::Trajectory_Segment(pathCom3, profCom.Clone(), duration3));
+
+        KDL::Path_RoundedComposite * pathStep = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
+        pathStep->Add(steps[stepN]);
+        pathStep->Add(makeHop(steps[stepN], steps[stepN + 2]));
+        pathStep->Add(steps[stepN + 2]);
+        pathStep->Finish();
+
+        if (i == 1)
+        {
+            duration0 = 0.0;
+        }
+
+        double durationMovingUp = duration0 + duration1;
+        double durationMovingDown = duration2;
+        double durationStationary = duration0 + duration1 + duration2;
+
+        if (movingRightFoot)
+        {
+            rightTraj.Add(new KDL::Trajectory_Segment(pathStep, profStep.Clone(), durationMovingUp));
+            rightTraj.Add(new KDL::Trajectory_Stationary(durationMovingDown, steps[stepN + 2]));
+            leftTraj.Add(new KDL::Trajectory_Stationary(durationStationary, steps[stepN + 1]));
+        }
+        else
+        {
+            leftTraj.Add(new KDL::Trajectory_Segment(pathStep, profStep.Clone(), durationMovingUp));
+            leftTraj.Add(new KDL::Trajectory_Stationary(durationMovingDown, steps[stepN + 2]));
+            rightTraj.Add(new KDL::Trajectory_Stationary(durationStationary, steps[stepN + 1]));
+        }
+
+        movingRightFoot = !movingRightFoot;
+    }
+
+    KDL::Path_RoundedComposite * pathLastStep = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
+
+    if (movingRightFoot)
+    {
+        rightTraj.Add(new KDL::Trajectory_Segment(pathLastStep, profStep.Clone(), duration0));
+        leftTraj.Add(new KDL::Trajectory_Stationary(duration0, steps[stepN + 1]));
+    }
+    else
+    {
+        leftTraj.Add(new KDL::Trajectory_Segment(pathLastStep, profStep.Clone(), duration0));
+        rightTraj.Add(new KDL::Trajectory_Stationary(duration0, steps[stepN + 1]));
     }
 
     comTraj.Add(new KDL::Trajectory_Segment(pathSquatUp, profSquatUp, DEFAULT_SQUAT_DURATION));
+
+    rightTraj.Add(new KDL::Trajectory_Stationary(profSquatUp->Duration(), steps[steps.size() - 2]));
+    leftTraj.Add(new KDL::Trajectory_Stationary(profSquatUp->Duration(), steps[steps.size() - 1]));
 }
 
 double TrajectoryGenerator::getDuration(const KDL::Vector & v)
 {
     return v.x() / vel;
+}
+
+KDL::Frame TrajectoryGenerator::makeHop(const KDL::Frame & H1, const KDL::Frame & H2)
+{
+    return H1 * KDL::Frame(H1.M, H2.p - H1.p) * KDL::Frame(H1.M, KDL::Vector(0, 0, footSpec.hop));
 }
