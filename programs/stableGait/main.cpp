@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
     if (!targetBuilder.validate(pointsLeft, pointsRight))
     {
         CD_ERROR("IK failed.\n");
-        //return 1;
+        return 1;
     }
 
     // Configure worker.

@@ -117,6 +117,10 @@ void TrajectoryGenerator::generate(KDL::Trajectory_Composite & comTraj, KDL::Tra
     }
 
     KDL::Path_RoundedComposite * pathLastStep = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
+    pathLastStep->Add(steps[stepN]);
+    pathLastStep->Add(makeHop(steps[stepN], steps[stepN + 2]));
+    pathLastStep->Add(steps[stepN + 2]);
+    pathLastStep->Finish();
 
     if (movingRightFoot)
     {
