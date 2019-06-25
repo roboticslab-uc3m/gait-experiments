@@ -7,9 +7,7 @@
 
 #include <ICartesianControl.h>
 
-#include "FootSpec.hpp"
-
-#define DEFAULT_TOLERANCE 0.005 // [m]
+#include "GaitSpecs.hpp"
 
 namespace rl = roboticslab;
 
@@ -19,15 +17,14 @@ namespace rl = roboticslab;
 class LimitChecker
 {
 public:
-    LimitChecker(rl::ICartesianControl * leftLeg, rl::ICartesianControl * rightLeg);
-
-    void configure(FootSpec footSpec, double tolerance = DEFAULT_TOLERANCE);
-    void offsetSquat(double offset);
-    void estimateParameters(double * squat, double * step);
+    LimitChecker(FootSpec footSpec, double tolerance, rl::ICartesianControl * leftLeg, rl::ICartesianControl * rightLeg);
+    void estimateParameters(GaitSpec & gaitSpec);
+    void setReference(GaitSpec gaitSpec);
+    bool updateSpecs(GaitSpec & gaitSpec);
 
 private:
-    void iterateSquat();
-    void iterateStep();
+    double iterateSquat();
+    double iterateStep(GaitSpec gaitSpec);
 
     rl::ICartesianControl * leftLeg;
     rl::ICartesianControl * rightLeg;
@@ -35,13 +32,9 @@ private:
     std::vector<double> initialLeft;
     std::vector<double> initialRight;
 
-    double squat;
-    double step;
-
     FootSpec footSpec;
+    GaitSpec referenceGaitSpec;
     double tolerance; // iteration magnitude
-
-    bool preset;
 };
 
 #endif // __LIMIT_CHECKER_HPP__

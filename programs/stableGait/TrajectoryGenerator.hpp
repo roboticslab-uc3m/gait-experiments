@@ -8,7 +8,7 @@
 #include <kdl/frames.hpp>
 #include <kdl/trajectory_composite.hpp>
 
-#include "FootSpec.hpp"
+#include "GaitSpecs.hpp"
 
 class TrajectoryGenerator
 {

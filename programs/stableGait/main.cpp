@@ -43,12 +43,13 @@ make -j$(nproc) && sudo make install
 
 #include <kdl/frames.hpp>
 #include <kdl/trajectory_composite.hpp>
+#include <kdl/utilities/error.h>
 
 #include <ICartesianControl.h>
 #include <KdlVectorConverter.hpp>
 #include <ColorDebug.h>
 
-#include "FootSpec.hpp"
+#include "GaitSpecs.hpp"
 #include "LimitChecker.hpp"
 #include "StepGenerator.hpp"
 #include "TrajectoryGenerator.hpp"
@@ -61,9 +62,10 @@ make -j$(nproc) && sudo make install
 #define DEFAULT_FOOT_WIDTH 0.14 // [m]
 #define DEFAULT_FOOT_MARGIN 0.02 // [m]
 #define DEFAULT_FOOT_STABLE 0.04 // [m]
-#define DEFAULT_FOOT_SEP 0.06 // [m]
-#define DEFAULT_FOOT_HOP 0.01 // [m]
 #define DEFAULT_FOOT_LIFT 0.005 // [m]
+#define DEFAULT_GAIT_SEP 0.06 // [m]
+#define DEFAULT_GAIT_HOP 0.01 // [m]
+#define DEFAULT_TOLERANCE 0.001 // [m]
 
 namespace rl = roboticslab;
 
@@ -96,11 +98,13 @@ int main(int argc, char *argv[])
     double footWidth = rf.check("width", yarp::os::Value(DEFAULT_FOOT_WIDTH), "foot width [m]").asFloat64();
     double footMargin = rf.check("margin", yarp::os::Value(DEFAULT_FOOT_MARGIN), "foot stability outer margin [m]").asFloat64();
     double footStable = rf.check("stable", yarp::os::Value(DEFAULT_FOOT_STABLE), "foot stability inner margin [m]").asFloat64();
-    double footSep = rf.check("sep", yarp::os::Value(DEFAULT_FOOT_SEP), "foot separation [m]").asFloat64();
-    double footHop = rf.check("hop", yarp::os::Value(DEFAULT_FOOT_HOP), "hop [m]").asFloat64();
     double footLift = rf.check("lift", yarp::os::Value(DEFAULT_FOOT_LIFT), "lift [m]").asFloat64();
+    double gaitSep = rf.check("sep", yarp::os::Value(DEFAULT_GAIT_SEP), "foot separation [m]").asFloat64();
+    double gaitHop = rf.check("hop", yarp::os::Value(DEFAULT_GAIT_HOP), "hop [m]").asFloat64();
+    double tolerance = rf.check("tolerance", yarp::os::Value(DEFAULT_TOLERANCE), "tolerance [m]").asFloat64();
 
     bool dryRun = rf.check("dry", "dry run");
+    bool once = rf.check("once", "run once");
 
     if (distance <= 0.0)
     {
@@ -150,21 +154,27 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (footSep <= 0.0)
-    {
-        CD_ERROR("Illegal argument: '--sep' must be greater than '0' (was '%f').\n", footSep);
-        return 1;
-    }
-
-    if (footHop < 0.0)
-    {
-        CD_ERROR("Illegal argument: '--hop' must be greater than or equal to '0' (was '%f').\n", footHop);
-        return 1;
-    }
-
     if (footLift < 0.0)
     {
         CD_ERROR("Illegal argument: '--lift' must be greater than or equal to '0' (was '%f').\n", footLift);
+        return 1;
+    }
+
+    if (gaitSep <= 0.0)
+    {
+        CD_ERROR("Illegal argument: '--sep' must be greater than '0' (was '%f').\n", gaitSep);
+        return 1;
+    }
+
+    if (gaitHop < 0.0)
+    {
+        CD_ERROR("Illegal argument: '--hop' must be greater than or equal to '0' (was '%f').\n", gaitHop);
+        return 1;
+    }
+
+    if (tolerance < 0.0)
+    {
+        CD_ERROR("Illegal argument: '--tolerance' must be greater than '0' (was '%f').\n", tolerance);
         return 1;
     }
 
@@ -226,7 +236,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Analyze motion limits.
+    // Initialize specs and components.
 
     std::vector<double> x_leftInitial;
 
@@ -237,82 +247,111 @@ int main(int argc, char *argv[])
     }
 
     x_leftInitial[2] += KDL::epsilon; // initial pose is hard to attain
+    KDL::Frame H_leftInitial = rl::KdlVectorConverter::vectorToFrame(x_leftInitial);
 
     FootSpec footSpec;
     footSpec.length = footLength;
     footSpec.width = footWidth;
     footSpec.margin = footMargin;
     footSpec.stable = footStable;
-    footSpec.sep = footSep;
-    footSpec.hop = footHop;
     footSpec.lift = footLift;
 
-    LimitChecker limitChecker(iCartesianControlLeftLeg, iCartesianControlRightLeg);
-    limitChecker.configure(footSpec);
+    GaitSpec gaitSpec;
+    gaitSpec.sep = gaitSep;
+    gaitSpec.hop = gaitHop;
 
-    double squat, step;
-    limitChecker.estimateParameters(&squat, &step);
+    LimitChecker limitChecker(footSpec, tolerance, iCartesianControlLeftLeg, iCartesianControlRightLeg);
+    limitChecker.estimateParameters(gaitSpec);
+    limitChecker.setReference(gaitSpec);
 
-    CD_INFO("squat: %f, step: %f\n", squat, step);
-
-    // Generate steps.
-
-    StepGenerator stepGenerator(footSpec);
-    stepGenerator.configure(squat, step, rl::KdlVectorConverter::vectorToFrame(x_leftInitial));
-
-    std::vector<KDL::Frame> steps, com;
-    stepGenerator.generate(distance, steps, com);
-
-    CD_INFO("Steps (%d, [x, y]):", steps.size());
-
-    for (int i = 0; i < steps.size(); i++)
-    {
-        const KDL::Vector & p = steps[i].p;
-        CD_INFO_NO_HEADER(" [%f %f]", p.x(), p.y());
-    }
-
-    CD_INFO_NO_HEADER("\n");
-
-    CD_INFO("CoM (%d, [x, y, z]):", com.size());
-
-    for (int i = 0; i < com.size(); i++)
-    {
-        const KDL::Vector & p = com[i].p;
-        CD_INFO_NO_HEADER(" [%f %f %f]", p.x(), p.y(), p.z());
-    }
-
-    CD_INFO_NO_HEADER("\n");
-
-    // Generate trajectories.
-
+    StepGenerator stepGenerator(footSpec, H_leftInitial);
     TrajectoryGenerator trajectoryGenerator(footSpec, distance, trajVel, trajAcc);
-    trajectoryGenerator.configure(steps, com);
-
-    KDL::Trajectory_Composite comTraj, leftTraj, rightTraj;
-    trajectoryGenerator.generate(comTraj, leftTraj, rightTraj);
-
-    CD_INFO("CoM: %f [s], left: %f [s], right: %f [s]\n", comTraj.Duration(), leftTraj.Duration(), rightTraj.Duration());
-
-    double minDuration = std::min(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
-    double maxDuration = std::max(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
-
-    if (maxDuration - minDuration > 1.0)
-    {
-        CD_ERROR("Duration difference exceeds 1.0 seconds: %f.\n", maxDuration - minDuration);
-        return 1;
-    }
-
-    // Build target points.
-
     TargetBuilder targetBuilder(iCartesianControlLeftLeg, iCartesianControlRightLeg);
-    targetBuilder.configure(&comTraj, &leftTraj, &rightTraj);
 
     TargetBuilder::Targets pointsLeft, pointsRight;
-    targetBuilder.build(period, pointsLeft, pointsRight);
 
-    if (!targetBuilder.validate(pointsLeft, pointsRight))
+    bool hasSolution = false;
+    double maxDuration;
+
+    do
     {
-        CD_ERROR("IK failed.\n");
+        CD_INFO("step: %f, squat: %f, hop: %f, sep: %f\n", gaitSpec.step, gaitSpec.squat, gaitSpec.hop, gaitSpec.sep);
+
+        // Generate steps.
+
+        stepGenerator.configure(gaitSpec);
+
+        std::vector<KDL::Frame> steps, com;
+        stepGenerator.generate(distance, steps, com);
+
+        CD_INFO("Steps (%d, [x, y]):", steps.size());
+
+        for (int i = 0; i < steps.size(); i++)
+        {
+            const KDL::Vector & p = steps[i].p;
+            CD_INFO_NO_HEADER(" [%f %f]", p.x(), p.y());
+        }
+
+        CD_INFO_NO_HEADER("\n");
+
+        CD_INFO("CoM (%d, [x, y, z]):", com.size());
+
+        for (int i = 0; i < com.size(); i++)
+        {
+            const KDL::Vector & p = com[i].p;
+            CD_INFO_NO_HEADER(" [%f %f %f]", p.x(), p.y(), p.z());
+        }
+
+        CD_INFO_NO_HEADER("\n");
+
+        // Generate trajectories.
+
+        trajectoryGenerator.configure(steps, com);
+
+        KDL::Trajectory_Composite comTraj, leftTraj, rightTraj;
+
+        try
+        {
+            trajectoryGenerator.generate(comTraj, leftTraj, rightTraj);
+        }
+        catch (const KDL::Error_MotionPlanning & e)
+        {
+            CD_WARNING("Error: %s.\n", e.Description());
+            continue;
+        }
+
+        CD_INFO("CoM: %f [s], left: %f [s], right: %f [s]\n", comTraj.Duration(), leftTraj.Duration(), rightTraj.Duration());
+
+        double minDuration = std::min(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
+        maxDuration = std::max(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
+
+        if (maxDuration - minDuration > 1.0)
+        {
+            CD_WARNING("Duration difference exceeds 1.0 seconds: %f.\n", maxDuration - minDuration);
+            continue;
+        }
+
+        // Build target points.
+
+        targetBuilder.configure(&comTraj, &leftTraj, &rightTraj);
+        targetBuilder.build(period, pointsLeft, pointsRight);
+
+        if (!targetBuilder.validate(pointsLeft, pointsRight))
+        {
+            CD_WARNING("IK failed.\n");
+            continue;
+        }
+        else
+        {
+            hasSolution = true;
+            break;
+        }
+    }
+    while (!once && limitChecker.updateSpecs(gaitSpec));
+
+    if (!hasSolution)
+    {
+        CD_ERROR("No valid solution found.\n");
         return 1;
     }
 

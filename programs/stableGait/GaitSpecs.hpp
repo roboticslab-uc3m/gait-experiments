@@ -1,7 +1,15 @@
 // -*- mode:C++; tab-width:4; c-basic-offset:4; indent-tabs-mode:nil -*-
 
-#ifndef __FOOT_SPEC_HPP__
-#define __FOOT_SPEC_HPP__
+#ifndef __GAIT_SPECS_HPP__
+#define __GAIT_SPECS_HPP__
+
+struct GaitSpec
+{
+    double squat;
+    double step;
+    double sep;
+    double hop;
+};
 
 struct FootSpec
 {
@@ -9,9 +17,7 @@ struct FootSpec
     double width;
     double margin;
     double stable;
-    double sep;
-    double hop;
     double lift;
 };
 
-#endif // __FOOT_SPEC_HPP__
+#endif // __GAIT_SPECS_HPP__

@@ -2,49 +2,59 @@
 
 #include "LimitChecker.hpp"
 
-LimitChecker::LimitChecker(rl::ICartesianControl * _leftLeg, rl::ICartesianControl * _rightLeg)
+LimitChecker::LimitChecker(FootSpec _footSpec, double _tolerance, rl::ICartesianControl * _leftLeg, rl::ICartesianControl * _rightLeg)
     : leftLeg(_leftLeg),
       rightLeg(_rightLeg),
-      squat(0.0),
-      step(0.0),
-      tolerance(DEFAULT_TOLERANCE),
-      preset(false)
-{}
-
-void LimitChecker::configure(FootSpec _footSpec, double _tolerance)
+      footSpec(_footSpec),
+      tolerance(_tolerance)
 {
-    footSpec = _footSpec;
-    tolerance = _tolerance;
-
-    // TODO: validate geometric parameters?
-
     leftLeg->stat(initialLeft);
     rightLeg->stat(initialRight);
 }
 
-void LimitChecker::offsetSquat(double offset)
+void LimitChecker::estimateParameters(GaitSpec & gaitSpec)
 {
-    if (preset)
-    {
-        squat -= offset;
-    }
+    gaitSpec.squat = iterateSquat();
+    gaitSpec.step = iterateStep(gaitSpec);
 }
 
-void LimitChecker::estimateParameters(double * _squat, double * _step)
+void LimitChecker::setReference(GaitSpec gaitSpec)
 {
-    if (!preset)
-    {
-        iterateSquat();
-        preset = true;
-    }
-
-    iterateStep();
-
-    *_squat = squat;
-    *_step = step;
+    referenceGaitSpec = gaitSpec;
 }
 
-void LimitChecker::iterateSquat()
+bool LimitChecker::updateSpecs(GaitSpec & gaitSpec)
+{
+    gaitSpec.sep += tolerance;
+
+    if (gaitSpec.sep <= initialLeft[1] * 2)
+    {
+        return true;
+    }
+
+    gaitSpec.sep = referenceGaitSpec.sep;
+    gaitSpec.hop += tolerance;
+
+    if (gaitSpec.hop < gaitSpec.squat)
+    {
+        return true;
+    }
+
+    gaitSpec.hop = referenceGaitSpec.hop;
+    gaitSpec.squat -= tolerance;
+
+    if (gaitSpec.squat > 0.0)
+    {
+        return true;
+    }
+
+    gaitSpec.squat = referenceGaitSpec.squat;
+    gaitSpec.step -= tolerance;
+
+    return gaitSpec.step > 0.0;
+}
+
+double LimitChecker::iterateSquat()
 {
     std::vector<double> x = initialLeft;
     std::vector<double> q;
@@ -55,13 +65,13 @@ void LimitChecker::iterateSquat()
     }
     while (leftLeg->inv(x, q));
 
-    squat = x[2] - initialLeft[2] - tolerance;
+    return x[2] - initialLeft[2] - tolerance;
 }
 
-void LimitChecker::iterateStep()
+double LimitChecker::iterateStep(GaitSpec gaitSpec)
 {
     std::vector<double> x = initialRight;
-    x[1] = -(footSpec.margin + footSpec.sep + (footSpec.width / 2.0));
+    x[1] = -(footSpec.margin + gaitSpec.sep + (footSpec.width / 2.0));
     std::vector<double> q;
 
     do
@@ -70,5 +80,5 @@ void LimitChecker::iterateStep()
     }
     while (rightLeg->inv(x, q));
 
-    step = (x[0] - tolerance) + footSpec.length - footSpec.margin - (footSpec.width / 2.0);
+    return (x[0] - tolerance) + footSpec.length - footSpec.margin - (footSpec.width / 2.0);
 }

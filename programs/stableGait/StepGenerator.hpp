@@ -7,19 +7,18 @@
 
 #include <kdl/frames.hpp>
 
-#include "FootSpec.hpp"
+#include "GaitSpecs.hpp"
 
 class StepGenerator
 {
 public:
-    StepGenerator(FootSpec footSpec);
-    void configure(double squat, double step, const KDL::Frame & initialPose);
+    StepGenerator(FootSpec footSpec, const KDL::Frame & initialPose);
+    void configure(GaitSpec gaitSpec);
     void generate(double distance, std::vector<KDL::Frame> & stepsLeft, std::vector<KDL::Frame> & stepsRight);
 
 private:
     FootSpec footSpec;
-    double squat;
-    double step;
+    GaitSpec gaitSpec;
     KDL::Frame initialPose;
 };
 
