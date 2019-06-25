@@ -11,6 +11,7 @@ struct FootSpec
     double stable;
     double sep;
     double hop;
+    double lift;
 };
 
 #endif // __FOOT_SPEC_HPP__

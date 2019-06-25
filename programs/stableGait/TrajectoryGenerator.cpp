@@ -158,5 +158,5 @@ double TrajectoryGenerator::getDuration(const KDL::Vector & v)
 KDL::Frame TrajectoryGenerator::makeHop(const KDL::Frame & H1, const KDL::Frame & H2)
 {
     KDL::Vector diff = H2.p - H1.p;
-    return H1 * KDL::Frame(H1.M, 0.5 * diff) * KDL::Frame(H1.M, KDL::Vector(0, 0, footSpec.hop));
+    return H1 * KDL::Frame(H1.M, 0.5 * diff) * KDL::Frame(H1.M, KDL::Vector(0, 0, footSpec.lift));
 }

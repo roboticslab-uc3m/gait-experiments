@@ -63,6 +63,7 @@ make -j$(nproc) && sudo make install
 #define DEFAULT_FOOT_STABLE 0.04 // [m]
 #define DEFAULT_FOOT_SEP 0.06 // [m]
 #define DEFAULT_FOOT_HOP 0.01 // [m]
+#define DEFAULT_FOOT_LIFT 0.005 // [m]
 
 namespace rl = roboticslab;
 
@@ -97,6 +98,7 @@ int main(int argc, char *argv[])
     double footStable = rf.check("stable", yarp::os::Value(DEFAULT_FOOT_STABLE), "foot stability inner margin [m]").asFloat64();
     double footSep = rf.check("sep", yarp::os::Value(DEFAULT_FOOT_SEP), "foot separation [m]").asFloat64();
     double footHop = rf.check("hop", yarp::os::Value(DEFAULT_FOOT_HOP), "hop [m]").asFloat64();
+    double footLift = rf.check("lift", yarp::os::Value(DEFAULT_FOOT_LIFT), "lift [m]").asFloat64();
 
     bool dryRun = rf.check("dry", "dry run");
 
@@ -157,6 +159,12 @@ int main(int argc, char *argv[])
     if (footHop < 0.0)
     {
         CD_ERROR("Illegal argument: '--hop' must be greater than or equal to '0' (was '%f').\n", footHop);
+        return 1;
+    }
+
+    if (footLift < 0.0)
+    {
+        CD_ERROR("Illegal argument: '--lift' must be greater than or equal to '0' (was '%f').\n", footLift);
         return 1;
     }
 
@@ -237,6 +245,7 @@ int main(int argc, char *argv[])
     footSpec.stable = footStable;
     footSpec.sep = footSep;
     footSpec.hop = footHop;
+    footSpec.lift = footLift;
 
     LimitChecker limitChecker(iCartesianControlLeftLeg, iCartesianControlRightLeg);
     limitChecker.configure(footSpec);
