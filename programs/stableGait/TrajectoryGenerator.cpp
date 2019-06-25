@@ -46,8 +46,9 @@ void TrajectoryGenerator::generate(KDL::Trajectory_Composite & comTraj, KDL::Tra
     pathSquatUp->Add(com[com.size() - 1]);
     pathSquatUp->Finish();
 
-    KDL::VelocityProfile * profSquatDown = new KDL::VelocityProfile_TrapHalf(vel, acc, true);
-    KDL::VelocityProfile * profSquatUp = new KDL::VelocityProfile_TrapHalf(vel, acc, false);
+    // FIXME: hardcoded, check behavior on simulator
+    KDL::VelocityProfile * profSquatDown = new KDL::VelocityProfile_TrapHalf(0.05, 0.2, true);
+    KDL::VelocityProfile * profSquatUp = new KDL::VelocityProfile_TrapHalf(0.05, 0.2, false);
 
     comTraj.Add(new KDL::Trajectory_Segment(pathSquatDown, profSquatDown, DEFAULT_SQUAT_DURATION));
 
