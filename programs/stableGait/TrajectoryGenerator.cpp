@@ -61,8 +61,10 @@ void TrajectoryGenerator::generate(KDL::Trajectory_Composite & comTraj, KDL::Tra
     int i, stepN;
     double duration0;
 
-    for (i = 2, stepN = (i - 1) / 3, duration0 = getDuration(com[i - 1].p - com[i].p); i < com.size() - 3; i += 3)
+    for (i = 2; i < com.size() - 3; i += 3)
     {
+        duration0 = getDuration(com[i].p - com[i - 1].p);
+
         KDL::Path_RoundedComposite * pathCom1 = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
         pathCom1->Add(com[i]);
         pathCom1->Add(com[i + 1]);
@@ -87,13 +89,15 @@ void TrajectoryGenerator::generate(KDL::Trajectory_Composite & comTraj, KDL::Tra
         double duration3 = getDuration(com[i + 3].p - com[i + 2].p);
         comTraj.Add(new KDL::Trajectory_Segment(pathCom3, profCom.Clone(), duration3));
 
+        stepN = (i - 2) / 3;
+
         KDL::Path_RoundedComposite * pathStep = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
         pathStep->Add(steps[stepN]);
         pathStep->Add(makeHop(steps[stepN], steps[stepN + 2]));
         pathStep->Add(steps[stepN + 2]);
         pathStep->Finish();
 
-        if (i == 1)
+        if (i == 2)
         {
             duration0 = 0.0;
         }
@@ -118,11 +122,16 @@ void TrajectoryGenerator::generate(KDL::Trajectory_Composite & comTraj, KDL::Tra
         movingRightFoot = !movingRightFoot;
     }
 
+    duration0 = getDuration(com[i].p - com[i - 1].p);
+    stepN = (i - 2) / 3;
+
     KDL::Path_RoundedComposite * pathLastStep = new KDL::Path_RoundedComposite(radius, eqradius, orient.Clone());
     pathLastStep->Add(steps[stepN]);
     pathLastStep->Add(makeHop(steps[stepN], steps[stepN + 2]));
     pathLastStep->Add(steps[stepN + 2]);
     pathLastStep->Finish();
+
+    printf("%d %d %f\n", i, stepN, duration0);
 
     if (movingRightFoot)
     {
