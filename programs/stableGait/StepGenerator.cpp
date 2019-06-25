@@ -56,7 +56,7 @@ void StepGenerator::generate(double distance, std::vector<KDL::Frame> & steps, s
         steps.push_back(KDL::Frame(rot, KDL::Vector(distance, -initialSep, 0)));
         steps.push_back(KDL::Frame(rot, KDL::Vector(distance, initialSep, 0)));
 
-        com.push_back(KDL::Frame(KDL::Vector(stepFwd, marginSep, maxSquat)));
+        com.push_back(KDL::Frame(KDL::Vector(stepFwd, marginSep, hopSquat)));
         com.push_back(KDL::Frame(KDL::Vector(distance - marginFwd, -marginSep, maxSquat)));
         com.push_back(KDL::Frame(KDL::Vector(distance, -stableSep, hopSquat)));
         com.push_back(KDL::Frame(KDL::Vector(distance, 0, hopSquat)));
