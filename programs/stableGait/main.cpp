@@ -98,6 +98,8 @@ int main(int argc, char *argv[])
     double footSep = rf.check("sep", yarp::os::Value(DEFAULT_FOOT_SEP), "foot separation [m]").asFloat64();
     double footHop = rf.check("hop", yarp::os::Value(DEFAULT_FOOT_HOP), "hop [m]").asFloat64();
 
+    bool dryRun = rf.check("dry", "dry run");
+
     if (distance <= 0.0)
     {
         CD_ERROR("Illegal argument: '--distance' must be greater than '0' (was '%f').\n", distance);
@@ -307,24 +309,27 @@ int main(int argc, char *argv[])
 
     // Configure worker.
 
-    yarp::os::TimerSettings timerSettings(period, maxDuration / period, maxDuration);
-
-    yarp::os::Timer::TimerCallback callback = [&](const yarp::os::YarpTimerEvent & event)
+    if (!dryRun)
     {
-        iCartesianControlLeftLeg->movi(pointsLeft[event.runCount]);
-        iCartesianControlRightLeg->movi(pointsRight[event.runCount]);
+        yarp::os::TimerSettings timerSettings(period, maxDuration / period, maxDuration);
 
-        return true;
-    };
+        yarp::os::Timer::TimerCallback callback = [&](const yarp::os::YarpTimerEvent & event)
+        {
+            iCartesianControlLeftLeg->movi(pointsLeft[event.runCount]);
+            iCartesianControlRightLeg->movi(pointsRight[event.runCount]);
 
-    yarp::os::Timer timer(timerSettings, callback, true);
+            return true;
+        };
 
-    // Execute trajectory.
+        yarp::os::Timer timer(timerSettings, callback, true);
 
-    if (timer.start())
-    {
-        yarp::os::Time::delay(maxDuration);
-        timer.stop();
+        // Execute trajectory.
+
+        if (timer.start())
+        {
+            yarp::os::Time::delay(maxDuration);
+            timer.stop();
+        }
     }
 
     return 0;
