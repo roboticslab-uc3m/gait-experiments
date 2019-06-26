@@ -3,7 +3,7 @@ add_executable(stableGait main.cpp
                           LimitChecker.cpp
                           StepGenerator.hpp
                           StepGenerator.cpp
-                          FootSpec.hpp
+                          GaitSpecs.hpp
                           TrajectoryGenerator.hpp
                           TrajectoryGenerator.cpp
                           TargetBuilder.hpp
