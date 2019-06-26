@@ -8,7 +8,7 @@
  *
 \verbatim
 mkdir build; cd build; cmake ..
-make -j$(nproc) && sudo make install
+make -j$(nproc)
 \endverbatim
  *
  * <b>Running example with teoSim</b>
@@ -22,9 +22,9 @@ make -j$(nproc) && sudo make install
  *
 \verbatim
 [on terminal 2] teoSim
-[on terminal 3] yarpdev --device BasicCartesianControl --name /teoSim/leftLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/leftLeg-Kinematics.ini--local /BasicCartesianControl/teoSim/leftLeg --remote /teoSim/leftLeg --ik st --invKinStrategy humanoidGait
-[on terminal 4] yarpdev --device BasicCartesianControl --name /teoSim/rightLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/rightLeg-Kinematics.ini--local /BasicCartesianControl/teoSim/rightLeg --remote /teoSim/rightLeg --ik st --invKinStrategy humanoidGait
-[on terminal 5] stableGait # WIP
+[on terminal 3] yarpdev --device BasicCartesianControl --name /teoSim/leftLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/leftLeg-kinematics.ini --local /BasicCartesianControl/teoSim/leftLeg --remote /teoSim/leftLeg --ik st --invKinStrategy humanoidGait
+[on terminal 4] yarpdev --device BasicCartesianControl --name /teoSim/rightLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/rightLeg-kinematics.ini --local /BasicCartesianControl/teoSim/rightLeg --remote /teoSim/rightLeg --ik st --invKinStrategy humanoidGait
+[on terminal 5] stableGait --distance 1.0 --dry
 \endverbatim
  */
 
