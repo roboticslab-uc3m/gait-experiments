@@ -1,2 +1,3 @@
 add_subdirectory(squatAndBalance)
 add_subdirectory(squatLooped)
+add_subdirectory(stableGait)
