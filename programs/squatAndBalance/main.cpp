@@ -22,9 +22,9 @@ make -j$(nproc)
  *
 \verbatim
 [on terminal 2] teoSim
-[on terminal 3] yarpdev --device BasicCartesianControl --name /teoSim/leftLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/leftLeg-Kinematics.ini--local /BasicCartesianControl/teoSim/leftLeg --remote /teoSim/leftLeg --ik st --invKinStrategy humanoidGait
-[on terminal 4] yarpdev --device BasicCartesianControl --name /teoSim/rightLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/rightLeg-Kinematics.ini--local /BasicCartesianControl/teoSim/rightLeg --remote /teoSim/rightLeg --ik st --invKinStrategy humanoidGait
-[on terminal 5] ./squatAndBalance --x 0.045 # move robot's CoM 4.5 cm down
+[on terminal 3] yarpdev --device BasicCartesianControl --name /teoSim/leftLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/leftLeg-kinematics.ini --local /BasicCartesianControl/teoSim/leftLeg --remote /teoSim/leftLeg --ik st --invKinStrategy humanoidGait
+[on terminal 4] yarpdev --device BasicCartesianControl --name /teoSim/rightLeg/CartesianControl --from /usr/local/share/teo-configuration-files/contexts/kinematics/rightLeg-kinematics.ini --local /BasicCartesianControl/teoSim/rightLeg --remote /teoSim/rightLeg --ik st --invKinStrategy humanoidGait
+[on terminal 5] ./squatAndBalance --z 0.045 # move robot's CoM 4.5 cm down
 [on terminal 5] ./squatAndBalance --y 0.1 # move CoM 10 cm to its left
 [on terminal 5] ./squatAndBalance --y -0.2 # move CoM 20 cm to its right
 [on terminal 5] ./squatAndBalance --y 0.1 # move CoM 10 cm back to its left, now centered
