@@ -30,6 +30,7 @@ make -j$(nproc)
 
 #include <cmath>
 
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -42,6 +43,7 @@ make -j$(nproc)
 #include <yarp/dev/PolyDriver.h>
 
 #include <kdl/frames.hpp>
+#include <kdl/trajectory.hpp>
 #include <kdl/trajectory_composite.hpp>
 #include <kdl/utilities/error.h>
 
@@ -106,76 +108,85 @@ int main(int argc, char *argv[])
     bool dryRun = rf.check("dry", "dry run");
     bool once = rf.check("once", "run once");
 
-    if (distance <= 0.0)
+    if (rf.check("input") && rf.check("output"))
     {
-        CD_ERROR("Illegal argument: '--distance' must be greater than '0' (was '%f').\n", distance);
+        CD_ERROR("Simultaneous serialization and deserialization not allowed.\n");
         return 1;
     }
 
-    if (trajVel <= 0.0)
+    if (!rf.check("input"))
     {
-        CD_ERROR("Illegal argument: '--vel' must be greater than '0' (was '%f').\n", trajVel);
-        return 1;
-    }
+        if (distance <= 0.0)
+        {
+            CD_ERROR("Illegal argument: '--distance' must be greater than '0' (was '%f').\n", distance);
+            return 1;
+        }
 
-    if (trajAcc <= 0.0)
-    {
-        CD_ERROR("Illegal argument: '--acc' must be greater than '0' (was '%f').\n", trajAcc);
-        return 1;
-    }
+        if (trajVel <= 0.0)
+        {
+            CD_ERROR("Illegal argument: '--vel' must be greater than '0' (was '%f').\n", trajVel);
+            return 1;
+        }
 
-    if (period <= 0.0)
-    {
-        CD_ERROR("Illegal argument: '--period' must be greater than '0' (was '%f').\n", period);
-        return 1;
-    }
+        if (trajAcc <= 0.0)
+        {
+            CD_ERROR("Illegal argument: '--acc' must be greater than '0' (was '%f').\n", trajAcc);
+            return 1;
+        }
 
-    if (footLength <= 0.0)
-    {
-        CD_ERROR("Illegal argument: '--length' must be greater than '0' (was '%f').\n", footLength);
-        return 1;
-    }
+        if (period <= 0.0)
+        {
+            CD_ERROR("Illegal argument: '--period' must be greater than '0' (was '%f').\n", period);
+            return 1;
+        }
 
-    if (footWidth <= 0.0)
-    {
-        CD_ERROR("Illegal argument: '--width' must be greater than '0' (was '%f').\n", footWidth);
-        return 1;
-    }
+        if (footLength <= 0.0)
+        {
+            CD_ERROR("Illegal argument: '--length' must be greater than '0' (was '%f').\n", footLength);
+            return 1;
+        }
 
-    if (footMargin <= 0.0)
-    {
-        CD_ERROR("Illegal argument: '--margin' must be greater than '0' (was '%f').\n", footMargin);
-        return 1;
-    }
+        if (footWidth <= 0.0)
+        {
+            CD_ERROR("Illegal argument: '--width' must be greater than '0' (was '%f').\n", footWidth);
+            return 1;
+        }
 
-    if (footStable <= 0.0)
-    {
-        CD_ERROR("Illegal argument: '--stable' must be greater than '0' (was '%f').\n", footStable);
-        return 1;
-    }
+        if (footMargin <= 0.0)
+        {
+            CD_ERROR("Illegal argument: '--margin' must be greater than '0' (was '%f').\n", footMargin);
+            return 1;
+        }
 
-    if (footLift < 0.0)
-    {
-        CD_ERROR("Illegal argument: '--lift' must be greater than or equal to '0' (was '%f').\n", footLift);
-        return 1;
-    }
+        if (footStable <= 0.0)
+        {
+            CD_ERROR("Illegal argument: '--stable' must be greater than '0' (was '%f').\n", footStable);
+            return 1;
+        }
 
-    if (gaitSep <= 0.0)
-    {
-        CD_ERROR("Illegal argument: '--sep' must be greater than '0' (was '%f').\n", gaitSep);
-        return 1;
-    }
+        if (footLift < 0.0)
+        {
+            CD_ERROR("Illegal argument: '--lift' must be greater than or equal to '0' (was '%f').\n", footLift);
+            return 1;
+        }
 
-    if (gaitHop < 0.0)
-    {
-        CD_ERROR("Illegal argument: '--hop' must be greater than or equal to '0' (was '%f').\n", gaitHop);
-        return 1;
-    }
+        if (gaitSep <= 0.0)
+        {
+            CD_ERROR("Illegal argument: '--sep' must be greater than '0' (was '%f').\n", gaitSep);
+            return 1;
+        }
 
-    if (tolerance < 0.0)
-    {
-        CD_ERROR("Illegal argument: '--tolerance' must be greater than '0' (was '%f').\n", tolerance);
-        return 1;
+        if (gaitHop < 0.0)
+        {
+            CD_ERROR("Illegal argument: '--hop' must be greater than or equal to '0' (was '%f').\n", gaitHop);
+            return 1;
+        }
+
+        if (tolerance < 0.0)
+        {
+            CD_ERROR("Illegal argument: '--tolerance' must be greater than '0' (was '%f').\n", tolerance);
+            return 1;
+        }
     }
 
     // Create devices (left leg).
@@ -236,123 +247,165 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Initialize specs and components.
-
-    std::vector<double> x_leftInitial;
-
-    if (!iCartesianControlLeftLeg->stat(x_leftInitial))
-    {
-        CD_ERROR("Cannot stat left leg.\n");
-        return 1;
-    }
-
-    x_leftInitial[2] += KDL::epsilon; // initial pose is hard to attain
-    KDL::Frame H_leftInitial = rl::KdlVectorConverter::vectorToFrame(x_leftInitial);
-
-    FootSpec footSpec;
-    footSpec.length = footLength;
-    footSpec.width = footWidth;
-    footSpec.margin = footMargin;
-    footSpec.stable = footStable;
-    footSpec.lift = footLift;
-
-    GaitSpec gaitSpec;
-    gaitSpec.sep = gaitSep;
-    gaitSpec.hop = gaitHop;
-
-    LimitChecker limitChecker(footSpec, tolerance, iCartesianControlLeftLeg, iCartesianControlRightLeg);
-    limitChecker.estimateParameters(gaitSpec);
-    limitChecker.setReference(gaitSpec);
-
-    StepGenerator stepGenerator(footSpec, H_leftInitial);
-    TrajectoryGenerator trajectoryGenerator(footSpec, distance, trajVel, trajAcc);
     TargetBuilder targetBuilder(iCartesianControlLeftLeg, iCartesianControlRightLeg);
-
     TargetBuilder::Targets pointsLeft, pointsRight;
 
-    bool hasSolution = false;
     double maxDuration;
 
-    do
+    if (!rf.check("input"))
     {
-        CD_INFO("step: %f, squat: %f, hop: %f, sep: %f\n", gaitSpec.step, gaitSpec.squat, gaitSpec.hop, gaitSpec.sep);
+        // Initialize specs and components.
 
-        // Generate steps.
+        std::vector<double> x_leftInitial;
 
-        stepGenerator.configure(gaitSpec);
-
-        std::vector<KDL::Frame> steps, com;
-        stepGenerator.generate(distance, steps, com);
-
-        CD_INFO("Steps (%d, [x, y]):", steps.size());
-
-        for (int i = 0; i < steps.size(); i++)
+        if (!iCartesianControlLeftLeg->stat(x_leftInitial))
         {
-            const KDL::Vector & p = steps[i].p;
-            CD_INFO_NO_HEADER(" [%f %f]", p.x(), p.y());
+            CD_ERROR("Cannot stat left leg.\n");
+            return 1;
         }
 
-        CD_INFO_NO_HEADER("\n");
+        x_leftInitial[2] += KDL::epsilon; // initial pose is hard to attain
+        KDL::Frame H_leftInitial = rl::KdlVectorConverter::vectorToFrame(x_leftInitial);
 
-        CD_INFO("CoM (%d, [x, y, z]):", com.size());
+        FootSpec footSpec;
+        footSpec.length = footLength;
+        footSpec.width = footWidth;
+        footSpec.margin = footMargin;
+        footSpec.stable = footStable;
+        footSpec.lift = footLift;
 
-        for (int i = 0; i < com.size(); i++)
-        {
-            const KDL::Vector & p = com[i].p;
-            CD_INFO_NO_HEADER(" [%f %f %f]", p.x(), p.y(), p.z());
-        }
+        GaitSpec gaitSpec;
+        gaitSpec.sep = gaitSep;
+        gaitSpec.hop = gaitHop;
 
-        CD_INFO_NO_HEADER("\n");
+        LimitChecker limitChecker(footSpec, tolerance, iCartesianControlLeftLeg, iCartesianControlRightLeg);
+        limitChecker.estimateParameters(gaitSpec);
+        limitChecker.setReference(gaitSpec);
 
-        // Generate trajectories.
+        StepGenerator stepGenerator(footSpec, H_leftInitial);
+        TrajectoryGenerator trajectoryGenerator(footSpec, distance, trajVel, trajAcc);
 
-        trajectoryGenerator.configure(steps, com);
+        bool hasSolution = false;
 
         KDL::Trajectory_Composite comTraj, leftTraj, rightTraj;
 
-        try
+        do
         {
-            trajectoryGenerator.generate(comTraj, leftTraj, rightTraj);
+            CD_INFO("step: %f, squat: %f, hop: %f, sep: %f\n", gaitSpec.step, gaitSpec.squat, gaitSpec.hop, gaitSpec.sep);
+
+            // Generate steps.
+
+            stepGenerator.configure(gaitSpec);
+
+            std::vector<KDL::Frame> steps, com;
+            stepGenerator.generate(distance, steps, com);
+
+            CD_INFO("Steps (%d, [x, y]):", steps.size());
+
+            for (int i = 0; i < steps.size(); i++)
+            {
+                const KDL::Vector & p = steps[i].p;
+                CD_INFO_NO_HEADER(" [%f %f]", p.x(), p.y());
+            }
+
+            CD_INFO_NO_HEADER("\n");
+
+            CD_INFO("CoM (%d, [x, y, z]):", com.size());
+
+            for (int i = 0; i < com.size(); i++)
+            {
+                const KDL::Vector & p = com[i].p;
+                CD_INFO_NO_HEADER(" [%f %f %f]", p.x(), p.y(), p.z());
+            }
+
+            CD_INFO_NO_HEADER("\n");
+
+            // Generate trajectories.
+
+            trajectoryGenerator.configure(steps, com);
+
+            try
+            {
+                trajectoryGenerator.generate(comTraj, leftTraj, rightTraj);
+            }
+            catch (const KDL::Error_MotionPlanning & e)
+            {
+                CD_WARNING("Error: %s.\n", e.Description());
+                continue;
+            }
+
+            CD_INFO("CoM: %f [s], left: %f [s], right: %f [s]\n", comTraj.Duration(), leftTraj.Duration(), rightTraj.Duration());
+
+            double minDuration = std::min(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
+            maxDuration = std::max(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
+
+            if (maxDuration - minDuration > 1.0)
+            {
+                CD_WARNING("Duration difference exceeds 1.0 seconds: %f.\n", maxDuration - minDuration);
+                continue;
+            }
+
+            // Build target points.
+
+            targetBuilder.configure(&comTraj, &leftTraj, &rightTraj);
+            targetBuilder.build(period, pointsLeft, pointsRight);
+
+            if (!targetBuilder.validate(pointsLeft, pointsRight))
+            {
+                CD_WARNING("IK failed.\n");
+                continue;
+            }
+            else
+            {
+                hasSolution = true;
+                break;
+            }
         }
-        catch (const KDL::Error_MotionPlanning & e)
+        while (!once && limitChecker.updateSpecs(gaitSpec));
+
+        if (!hasSolution)
         {
-            CD_WARNING("Error: %s.\n", e.Description());
-            continue;
+            CD_ERROR("No valid solution found.\n");
+            return 1;
         }
 
-        CD_INFO("CoM: %f [s], left: %f [s], right: %f [s]\n", comTraj.Duration(), leftTraj.Duration(), rightTraj.Duration());
-
-        double minDuration = std::min(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
-        maxDuration = std::max(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
-
-        if (maxDuration - minDuration > 1.0)
+        if (rf.check("output"))
         {
-            CD_WARNING("Duration difference exceeds 1.0 seconds: %f.\n", maxDuration - minDuration);
-            continue;
+            std::string output = rf.check("output", yarp::os::Value("trajectory"), "output file").asString();
+
+            std::ofstream comTrajFile(output + "-com.txt");
+            std::ofstream leftTrajFile(output + "-left.txt");
+            std::ofstream rightTrajFile(output + "-right.txt");
+
+            comTraj.Write(comTrajFile);
+            leftTraj.Write(leftTrajFile);
+            rightTraj.Write(rightTrajFile);
         }
+    }
+    else
+    {
+        std::string input = rf.check("input", yarp::os::Value("trajectory"), "input file").asString();
 
-        // Build target points.
+        std::ifstream comTrajFile(input + "-com.txt");
+        std::ifstream leftTrajFile(input + "-left.txt");
+        std::ifstream rightTrajFile(input + "-right.txt");
 
-        targetBuilder.configure(&comTraj, &leftTraj, &rightTraj);
+        KDL::Trajectory * comTraj = KDL::Trajectory::Read(comTrajFile);
+        KDL::Trajectory * leftTraj = KDL::Trajectory::Read(leftTrajFile);
+        KDL::Trajectory * rightTraj = KDL::Trajectory::Read(rightTrajFile);
+
+        targetBuilder.configure(comTraj, leftTraj, rightTraj);
         targetBuilder.build(period, pointsLeft, pointsRight);
+
+        delete comTraj;
+        delete leftTraj;
+        delete rightTraj;
 
         if (!targetBuilder.validate(pointsLeft, pointsRight))
         {
-            CD_WARNING("IK failed.\n");
-            continue;
+            CD_ERROR("IK failed.\n");
+            return 1;
         }
-        else
-        {
-            hasSolution = true;
-            break;
-        }
-    }
-    while (!once && limitChecker.updateSpecs(gaitSpec));
-
-    if (!hasSolution)
-    {
-        CD_ERROR("No valid solution found.\n");
-        return 1;
     }
 
     // Configure worker.
