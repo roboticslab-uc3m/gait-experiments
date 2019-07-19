@@ -57,6 +57,11 @@ make -j$(nproc)
 #include "TrajectoryGenerator.hpp"
 #include "TargetBuilder.hpp"
 
+namespace roboticslab
+{
+    extern KDL::Trajectory * parseTrajectory(std::istream & is);
+}
+
 #define DEFAULT_TRAJ_VEL 0.175 // [m/s]
 #define DEFAULT_TRAJ_ACC 5.0 // [m/s^2]
 #define DEFAULT_CMD_PERIOD 0.05 // [s]
@@ -395,9 +400,9 @@ int main(int argc, char *argv[])
 
         try
         {
-            comTraj = KDL::Trajectory::Read(comTrajFile);
-            leftTraj = KDL::Trajectory::Read(leftTrajFile);
-            rightTraj = KDL::Trajectory::Read(rightTrajFile);
+            comTraj = rl::parseTrajectory(comTrajFile);
+            leftTraj = rl::parseTrajectory(leftTrajFile);
+            rightTraj = rl::parseTrajectory(rightTrajFile);
         }
         catch (const KDL::Error_MotionIO & e)
         {

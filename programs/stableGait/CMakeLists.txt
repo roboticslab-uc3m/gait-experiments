@@ -7,7 +7,8 @@ add_executable(stableGait main.cpp
                           TrajectoryGenerator.hpp
                           TrajectoryGenerator.cpp
                           TargetBuilder.hpp
-                          TargetBuilder.cpp)
+                          TargetBuilder.cpp
+                          TrajectoryReader.cpp)
 
 target_link_libraries(stableGait YARP::YARP_OS
                                  YARP::YARP_init
