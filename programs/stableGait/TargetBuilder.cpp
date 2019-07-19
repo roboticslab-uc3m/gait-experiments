@@ -8,6 +8,8 @@
 
 #include <KdlVectorConverter.hpp>
 
+#include <ColorDebug.h>
+
 TargetBuilder::TargetBuilder(rl::ICartesianControl * _iCartLeft, rl::ICartesianControl * _iCartRight)
     : iCartLeft(_iCartLeft),
       iCartRight(_iCartRight),
