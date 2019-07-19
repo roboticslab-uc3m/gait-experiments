@@ -287,10 +287,10 @@ int main(int argc, char *argv[])
 
         bool hasSolution = false;
 
-        KDL::Trajectory_Composite comTraj, leftTraj, rightTraj;
-
         do
         {
+            KDL::Trajectory_Composite comTraj, leftTraj, rightTraj;
+
             CD_INFO("step: %f, squat: %f, hop: %f, sep: %f\n", gaitSpec.step, gaitSpec.squat, gaitSpec.hop, gaitSpec.sep);
 
             // Generate steps.
@@ -358,6 +358,20 @@ int main(int argc, char *argv[])
             else
             {
                 hasSolution = true;
+
+                if (rf.check("output"))
+                {
+                    std::string output = rf.check("output", yarp::os::Value("trajectory"), "output file").asString();
+
+                    std::ofstream comTrajFile(output + "-com.txt");
+                    std::ofstream leftTrajFile(output + "-left.txt");
+                    std::ofstream rightTrajFile(output + "-right.txt");
+
+                    comTraj.Write(comTrajFile);
+                    leftTraj.Write(leftTrajFile);
+                    rightTraj.Write(rightTrajFile);
+                }
+
                 break;
             }
         }
@@ -368,19 +382,6 @@ int main(int argc, char *argv[])
             CD_ERROR("No valid solution found.\n");
             return 1;
         }
-
-        if (rf.check("output"))
-        {
-            std::string output = rf.check("output", yarp::os::Value("trajectory"), "output file").asString();
-
-            std::ofstream comTrajFile(output + "-com.txt");
-            std::ofstream leftTrajFile(output + "-left.txt");
-            std::ofstream rightTrajFile(output + "-right.txt");
-
-            comTraj.Write(comTrajFile);
-            leftTraj.Write(leftTrajFile);
-            rightTraj.Write(rightTrajFile);
-        }
     }
     else
     {
@@ -390,9 +391,19 @@ int main(int argc, char *argv[])
         std::ifstream leftTrajFile(input + "-left.txt");
         std::ifstream rightTrajFile(input + "-right.txt");
 
-        KDL::Trajectory * comTraj = KDL::Trajectory::Read(comTrajFile);
-        KDL::Trajectory * leftTraj = KDL::Trajectory::Read(leftTrajFile);
-        KDL::Trajectory * rightTraj = KDL::Trajectory::Read(rightTrajFile);
+        KDL::Trajectory *comTraj, *leftTraj, *rightTraj;
+
+        try
+        {
+            comTraj = KDL::Trajectory::Read(comTrajFile);
+            leftTraj = KDL::Trajectory::Read(leftTrajFile);
+            rightTraj = KDL::Trajectory::Read(rightTrajFile);
+        }
+        catch (const KDL::Error_MotionIO & e)
+        {
+            CD_ERROR("Error: %s.\n", e.Description());
+            return 1;
+        }
 
         targetBuilder.configure(comTraj, leftTraj, rightTraj);
         targetBuilder.build(period, pointsLeft, pointsRight);
