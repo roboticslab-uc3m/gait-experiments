@@ -30,9 +30,11 @@ make -j$(nproc)
 
 #include <cmath>
 
+#include <sstream>
 #include <string>
 #include <vector>
 
+#include <yarp/os/LogStream.h>
 #include <yarp/os/Network.h>
 #include <yarp/os/Property.h>
 #include <yarp/os/ResourceFinder.h>
@@ -47,7 +49,6 @@ make -j$(nproc)
 
 #include <ICartesianControl.h>
 #include <KdlVectorConverter.hpp>
-#include <ColorDebug.h>
 
 #include "GaitSpecs.hpp"
 #include "LimitChecker.hpp"
@@ -77,7 +78,7 @@ int main(int argc, char *argv[])
 
     if (!yarp::os::Network::checkNetwork())
     {
-        CD_ERROR("Please start a yarp name server first.\n");
+        yError() << "Please start a yarp name server first";
         return 1;
     }
 
@@ -86,7 +87,7 @@ int main(int argc, char *argv[])
     yarp::os::ResourceFinder rf;
     rf.configure(argc, argv);
 
-    CD_DEBUG("%s\n", rf.toString().c_str());
+    yDebug() << rf.toString();
 
     std::string robotPrefix = rf.check("prefix", yarp::os::Value("/teoSim")).asString();
 
@@ -108,73 +109,73 @@ int main(int argc, char *argv[])
 
     if (distance <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--distance' must be greater than '0' (was '%f').\n", distance);
+        yError() << "Illegal argument: '--distance' must be greater than '0', was:" << distance;
         return 1;
     }
 
     if (trajVel <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--vel' must be greater than '0' (was '%f').\n", trajVel);
+        yError() << "Illegal argument: '--vel' must be greater than '0', was:" << trajVel;
         return 1;
     }
 
     if (trajAcc <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--acc' must be greater than '0' (was '%f').\n", trajAcc);
+        yError() << "Illegal argument: '--acc' must be greater than '0', was:" << trajAcc;
         return 1;
     }
 
     if (period <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--period' must be greater than '0' (was '%f').\n", period);
+        yError() << "Illegal argument: '--period' must be greater than '0', was:" << period;
         return 1;
     }
 
     if (footLength <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--length' must be greater than '0' (was '%f').\n", footLength);
+        yError() << "Illegal argument: '--length' must be greater than '0', was:" << footLength;
         return 1;
     }
 
     if (footWidth <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--width' must be greater than '0' (was '%f').\n", footWidth);
+        yError() << "Illegal argument: '--width' must be greater than '0', was:" << footWidth;
         return 1;
     }
 
     if (footMargin <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--margin' must be greater than '0' (was '%f').\n", footMargin);
+        yError() << "Illegal argument: '--margin' must be greater than '0', was:" << footMargin;
         return 1;
     }
 
     if (footStable <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--stable' must be greater than '0' (was '%f').\n", footStable);
+        yError() << "Illegal argument: '--stable' must be greater than '0', was:" << footStable;
         return 1;
     }
 
     if (footLift < 0.0)
     {
-        CD_ERROR("Illegal argument: '--lift' must be greater than or equal to '0' (was '%f').\n", footLift);
+        yError() << "Illegal argument: '--lift' must be greater than or equal to '0', was:" << footLift;
         return 1;
     }
 
     if (gaitSep <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--sep' must be greater than '0' (was '%f').\n", gaitSep);
+        yError() << "Illegal argument: '--sep' must be greater than '0', was:" << gaitSep;
         return 1;
     }
 
     if (gaitHop < 0.0)
     {
-        CD_ERROR("Illegal argument: '--hop' must be greater than or equal to '0' (was '%f').\n", gaitHop);
+        yError() << "Illegal argument: '--hop' must be greater than or equal to '0', was:" << gaitHop;
         return 1;
     }
 
     if (tolerance < 0.0)
     {
-        CD_ERROR("Illegal argument: '--tolerance' must be greater than '0' (was '%f').\n", tolerance);
+        yError() << "Illegal argument: '--tolerance' must be greater than '0', was:" << tolerance;
         return 1;
     }
 
@@ -189,7 +190,7 @@ int main(int argc, char *argv[])
 
     if (!leftLegDevice.isValid())
     {
-        CD_ERROR("Cartesian device (left leg) not available.\n");
+        yError() << "Cartesian device (left leg) not available";
         return 1;
     }
 
@@ -197,13 +198,13 @@ int main(int argc, char *argv[])
 
     if (!leftLegDevice.view(iCartesianControlLeftLeg))
     {
-        CD_ERROR("Cannot view iCartesianControlLeftLeg.\n");
+        yError() << "Cannot view iCartesianControlLeftLeg";
         return 1;
     }
 
     if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
     {
-        CD_ERROR("Cannot preset streaming command (left leg).\n");
+        yError() << "Cannot preset streaming command (left leg)";
         return 1;
     }
 
@@ -218,7 +219,7 @@ int main(int argc, char *argv[])
 
     if (!rightLegDevice.isValid())
     {
-        CD_ERROR("Cartesian device (right leg) not available.\n");
+        yError() << "Cartesian device (right leg) not available";
         return 1;
     }
 
@@ -226,13 +227,13 @@ int main(int argc, char *argv[])
 
     if (!rightLegDevice.view(iCartesianControlRightLeg))
     {
-        CD_ERROR("Cannot view iCartesianControlRightLeg.\n");
+        yError() << "Cannot view iCartesianControlRightLeg";
         return 1;
     }
 
     if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
     {
-        CD_ERROR("Cannot preset streaming command (right leg).\n");
+        yError() << "Cannot preset streaming command (right leg)";
         return 1;
     }
 
@@ -242,7 +243,7 @@ int main(int argc, char *argv[])
 
     if (!iCartesianControlLeftLeg->stat(x_leftInitial))
     {
-        CD_ERROR("Cannot stat left leg.\n");
+        yError() << "Cannot stat left leg";
         return 1;
     }
 
@@ -275,7 +276,7 @@ int main(int argc, char *argv[])
 
     do
     {
-        CD_INFO("step: %f, squat: %f, hop: %f, sep: %f\n", gaitSpec.step, gaitSpec.squat, gaitSpec.hop, gaitSpec.sep);
+        yInfo("step: %f, squat: %f, hop: %f, sep: %f", gaitSpec.step, gaitSpec.squat, gaitSpec.hop, gaitSpec.sep);
 
         // Generate steps.
 
@@ -284,25 +285,31 @@ int main(int argc, char *argv[])
         std::vector<KDL::Frame> steps, com;
         stepGenerator.generate(distance, steps, com);
 
-        CD_INFO("Steps (%d, [x, y]):", steps.size());
-
-        for (int i = 0; i < steps.size(); i++)
         {
-            const KDL::Vector & p = steps[i].p;
-            CD_INFO_NO_HEADER(" [%f %f]", p.x(), p.y());
+            auto && log = yInfo();
+            log << steps.size() << "steps ([x, y]):";
+
+            for (int i = 0; i < steps.size(); i++)
+            {
+                const KDL::Vector & p = steps[i].p;
+                std::ostringstream oss;
+                oss << "[" << p.x() << " " << p.y() << "]";
+                log << oss.str();
+            }
         }
 
-        CD_INFO_NO_HEADER("\n");
-
-        CD_INFO("CoM (%d, [x, y, z]):", com.size());
-
-        for (int i = 0; i < com.size(); i++)
         {
-            const KDL::Vector & p = com[i].p;
-            CD_INFO_NO_HEADER(" [%f %f %f]", p.x(), p.y(), p.z());
-        }
+            auto && log = yInfo();
+            log << com.size() << "CoM points ([x, y, z]):";
 
-        CD_INFO_NO_HEADER("\n");
+            for (int i = 0; i < com.size(); i++)
+            {
+                const KDL::Vector & p = com[i].p;
+                std::ostringstream oss;
+                oss << "[" << p.x() << " " << p.y() << " " << p.z() << "]";
+                log << oss.str();
+            }
+        }
 
         // Generate trajectories.
 
@@ -316,18 +323,18 @@ int main(int argc, char *argv[])
         }
         catch (const KDL::Error_MotionPlanning & e)
         {
-            CD_WARNING("Error: %s.\n", e.Description());
+            yWarning() << "Error:" << e.Description();
             continue;
         }
 
-        CD_INFO("CoM: %f [s], left: %f [s], right: %f [s]\n", comTraj.Duration(), leftTraj.Duration(), rightTraj.Duration());
+        yInfo() << "CoM:" << comTraj.Duration() << "[s], left:" << leftTraj.Duration() << "[s], right:" << rightTraj.Duration() << "[s]";
 
         double minDuration = std::min(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
         maxDuration = std::max(std::min(comTraj.Duration(), leftTraj.Duration()), rightTraj.Duration());
 
         if (maxDuration - minDuration > 1.0)
         {
-            CD_WARNING("Duration difference exceeds 1.0 seconds: %f.\n", maxDuration - minDuration);
+            yWarning() << "Duration difference exceeds 1.0 seconds:" << maxDuration - minDuration;
             continue;
         }
 
@@ -338,7 +345,7 @@ int main(int argc, char *argv[])
 
         if (!targetBuilder.validate(pointsLeft, pointsRight))
         {
-            CD_WARNING("IK failed.\n");
+            yWarning() << "IK failed";
             continue;
         }
         else
@@ -351,7 +358,7 @@ int main(int argc, char *argv[])
 
     if (!hasSolution)
     {
-        CD_ERROR("No valid solution found.\n");
+        yError() << "No valid solution found";
         return 1;
     }
 

@@ -1,7 +1,7 @@
 # Copyright: Universidad Carlos III de Madrid (C) 2019.
 # CopyPolicy: Released under the terms of the GNU LGPL v2.1.
 
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
 project(ROBOTICSLAB_GAIT_EXPERIMENTS LANGUAGES CXX)
 
@@ -36,9 +36,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake
                               ${CMAKE_SOURCE_DIR}/cmake/find-modules)
 
 # Hard dependencies.
-find_package(YCM 0.10 REQUIRED)
-find_package(YARP 3.1 REQUIRED COMPONENTS OS dev)
-find_package(COLOR_DEBUG REQUIRED)
+find_package(YCM 0.11 REQUIRED)
+find_package(YARP 3.3 REQUIRED COMPONENTS os dev)
 find_package(orocos_kdl 1.4 REQUIRED) # before kin-dyn due to ROS installation
 find_package(ROBOTICSLAB_KINEMATICS_DYNAMICS REQUIRED)
 
@@ -89,7 +88,7 @@ if(FALSE)
     endif()
 
     # Store the package in the user registry.
-    export(PACKAGE ROBOTICSLAB_GAIT_EXPERIMENTS)
+    set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)
 
     # Create and install config files.
     include(InstallBasicPackageFiles)

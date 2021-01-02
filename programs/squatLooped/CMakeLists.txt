@@ -4,8 +4,7 @@ target_link_libraries(squatLooped YARP::YARP_OS
                                   YARP::YARP_init
                                   YARP::YARP_dev
                                   ROBOTICSLAB::KdlVectorConverterLib
-                                  ROBOTICSLAB::KinematicsDynamicsInterfaces
-                                  ROBOTICSLAB::ColorDebug)
+                                  ROBOTICSLAB::KinematicsDynamicsInterfaces)
 
 target_compile_features(squatLooped PRIVATE cxx_lambdas)
 

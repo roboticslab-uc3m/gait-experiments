@@ -31,6 +31,7 @@ make -j$(nproc)
 #include <string>
 #include <vector>
 
+#include <yarp/os/LogStream.h>
 #include <yarp/os/Network.h>
 #include <yarp/os/Property.h>
 #include <yarp/os/ResourceFinder.h>
@@ -48,7 +49,6 @@ make -j$(nproc)
 
 #include <ICartesianControl.h>
 #include <KdlVectorConverter.hpp>
-#include <ColorDebug.h>
 
 #define TRAJ_DURATION 10.0
 #define TRAJ_MAX_VEL 0.05
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
     if (!yarp::os::Network::checkNetwork())
     {
-        CD_ERROR("Please start a yarp name server first.\n");
+        yError() << "Please start a yarp name server first";
         return 1;
     }
 
@@ -85,13 +85,13 @@ int main(int argc, char *argv[])
 
     if (z <= 0.0)
     {
-        CD_ERROR("Illegal argument: '--z' must be greater than '0' (was '%f').\n", z);
+        yError() << "Illegal argument: '--z' must be greater than '0', was:" << z;
         return 1;
     }
 
     if (squats < 1)
     {
-        CD_ERROR("Illegal argument: '--squats' must be greater than '0' (was '%d').\n", squats);
+        yError() << "Illegal argument: '--squats' must be greater than '0', was:" << squats;
         return 1;
     }
 
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
     if (!leftLegDevice.isValid())
     {
-        CD_ERROR("Cartesian device (left leg) not available.\n");
+        yError() << "Cartesian device (left leg) not available";
         return 1;
     }
 
@@ -114,13 +114,13 @@ int main(int argc, char *argv[])
 
     if (!leftLegDevice.view(iCartesianControlLeftLeg))
     {
-        CD_ERROR("Cannot view iCartesianControlLeftLeg.\n");
+        yError() << "Cannot view iCartesianControlLeftLeg";
         return 1;
     }
 
     if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
     {
-        CD_ERROR("Cannot preset streaming command (left leg).\n");
+        yError() << "Cannot preset streaming command (left leg)";
         return 1;
     }
 
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
 
     if (!rightLegDevice.isValid())
     {
-        CD_ERROR("Cartesian device (right leg) not available.\n");
+        yError() << "Cartesian device (right leg) not available";
         return 1;
     }
 
@@ -143,13 +143,13 @@ int main(int argc, char *argv[])
 
     if (!rightLegDevice.view(iCartesianControlRightLeg))
     {
-        CD_ERROR("Cannot view iCartesianControlRightLeg.\n");
+        yError() << "Cannot view iCartesianControlRightLeg";
         return 1;
     }
 
     if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
     {
-        CD_ERROR("Cannot preset streaming command (right leg).\n");
+        yError() << "Cannot preset streaming command (right leg)";
         return 1;
     }
 
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
 
     if (!iCartesianControlLeftLeg->stat(x_leftLeg))
     {
-        CD_ERROR("stat() failed (left leg).\n");
+        yError() << "stat() failed (left leg)";
         return 1;
     }
 
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
 
     if (!iCartesianControlRightLeg->stat(x_rightLeg))
     {
-        CD_ERROR("stat() failed (right leg).\n");
+        yError() << "stat() failed (right leg)";
         return 1;
     }
 
@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
 
     // Perform actions.
 
-    CD_INFO("Performing %d squat(s) with z=%f in %f seconds...\n", squats, z, totalDuration);
+    yInfo() << "Performing" << squats << "squat(s) with z =" << z << "in" << totalDuration << "seconds...";
 
     if (timer.start())
     {

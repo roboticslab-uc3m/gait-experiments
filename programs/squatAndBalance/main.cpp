@@ -35,6 +35,7 @@ make -j$(nproc)
 #include <string>
 #include <vector>
 
+#include <yarp/os/LogStream.h>
 #include <yarp/os/Network.h>
 #include <yarp/os/Property.h>
 #include <yarp/os/ResourceFinder.h>
@@ -45,7 +46,6 @@ make -j$(nproc)
 
 #include <ICartesianControl.h>
 #include <KdlTrajectory.hpp>
-#include <ColorDebug.h>
 
 #define TRAJ_DURATION 10.0
 #define TRAJ_MAX_VEL 0.05
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 
     if (!yarp::os::Network::checkNetwork())
     {
-        CD_ERROR("Please start a yarp name server first.\n");
+        yError() << "Please start a yarp name server first";
         return 1;
     }
 
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
     if (!leftLegDevice.isValid())
     {
-        CD_ERROR("Cartesian device (left leg) not available.\n");
+        yError() << "Cartesian device (left leg) not available";
         return 1;
     }
 
@@ -112,13 +112,13 @@ int main(int argc, char *argv[])
 
     if (!leftLegDevice.view(iCartesianControlLeftLeg))
     {
-        CD_ERROR("Cannot view iCartesianControlLeftLeg.\n");
+        yError() << "Cannot view iCartesianControlLeftLeg";
         return 1;
     }
 
     if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
     {
-        CD_ERROR("Cannot preset streaming command (left leg).\n");
+        yError() << "Cannot preset streaming command (left leg)";
         return 1;
     }
 
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 
     if (!rightLegDevice.isValid())
     {
-        CD_ERROR("Cartesian device (right leg) not available.\n");
+        yError() << "Cartesian device (right leg) not available";
         return 1;
     }
 
@@ -139,13 +139,13 @@ int main(int argc, char *argv[])
 
     if (!rightLegDevice.view(iCartesianControlRightLeg))
     {
-        CD_ERROR("Cannot view iCartesianControlRightLeg.\n");
+        yError() << "Cannot view iCartesianControlRightLeg";
         return 1;
     }
 
     if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
     {
-        CD_ERROR("Cannot preset streaming command (right leg).\n");
+        yError() << "Cannot preset streaming command (right leg)";
         return 1;
     }
 
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 
     if (!iCartesianControlLeftLeg->stat(x_leftLeg))
     {
-        CD_ERROR("stat() failed (left leg).\n");
+        yError() << "stat() failed (left leg)";
         return 1;
     }
 
@@ -163,8 +163,8 @@ int main(int argc, char *argv[])
     xd_leftLeg[1] -= y;
     xd_leftLeg[2] += z;
 
-    CD_INFO("Current (left): %f %f %f\n", x_leftLeg[0], x_leftLeg[1], x_leftLeg[2]);
-    CD_INFO("Desired (left): %f %f %f\n", xd_leftLeg[0], xd_leftLeg[1], xd_leftLeg[2]);
+    yInfo() << "Current (left):" <<  x_leftLeg[0] << x_leftLeg[1] << x_leftLeg[2];
+    yInfo() << "Desired (left):" << xd_leftLeg[0] << xd_leftLeg[1] << xd_leftLeg[2];
 
     rl::KdlTrajectory trajectoryLeftLeg;
 
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 
     if (!trajectoryLeftLeg.create())
     {
-        CD_ERROR("Problem creating cartesian trajectory (left leg).\n");
+        yError() << "Problem creating cartesian trajectory (left leg)";
         return 1;
     }
 
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 
     if (!iCartesianControlRightLeg->stat(x_rightLeg))
     {
-        CD_ERROR("stat() failed (right leg).\n");
+        yError() << "stat() failed (right leg)";
         return 1;
     }
 
@@ -193,8 +193,8 @@ int main(int argc, char *argv[])
     xd_rightLeg[1] -= y;
     xd_rightLeg[2] += z;
 
-    CD_INFO("Current (right): %f %f %f\n", x_rightLeg[0], x_rightLeg[1], x_rightLeg[2]);
-    CD_INFO("Desired (right): %f %f %f\n", xd_rightLeg[0], xd_rightLeg[1], xd_rightLeg[2]);
+    yInfo() << "Current (right):" << x_rightLeg[0] << x_rightLeg[1] << x_rightLeg[2];
+    yInfo() << "Desired (right):" << xd_rightLeg[0] << xd_rightLeg[1] << xd_rightLeg[2];
 
     rl::KdlTrajectory trajectoryRightLeg;
 
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 
     if (!trajectoryRightLeg.create())
     {
-        CD_ERROR("Problem creating cartesian trajectory (right leg).\n");
+        yError() << "Problem creating cartesian trajectory (right leg)";
         return 1;
     }
 

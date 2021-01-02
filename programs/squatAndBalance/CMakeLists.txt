@@ -4,8 +4,7 @@ target_link_libraries(squatAndBalance YARP::YARP_OS
                                       YARP::YARP_init
                                       YARP::YARP_dev
                                       ROBOTICSLAB::TrajectoryLib
-                                      ROBOTICSLAB::KinematicsDynamicsInterfaces
-                                      ROBOTICSLAB::ColorDebug)
+                                      ROBOTICSLAB::KinematicsDynamicsInterfaces)
 
 include(GNUInstallDirs)
 
