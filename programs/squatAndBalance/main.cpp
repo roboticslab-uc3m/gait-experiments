@@ -32,6 +32,7 @@ make -j$(nproc)
 \endverbatim
  */
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -44,11 +45,17 @@ make -j$(nproc)
 
 #include <yarp/dev/PolyDriver.h>
 
+#include <kdl/path_line.hpp>
+#include <kdl/rotational_interpolation_sa.hpp>
+#include <kdl/trajectory_segment.hpp>
+#include <kdl/velocityprofile_trap.hpp>
+
 #include <ICartesianControl.h>
-#include <KdlTrajectory.hpp>
+#include <KdlVectorConverter.hpp>
 
 #define TRAJ_DURATION 10.0
 #define TRAJ_MAX_VEL 0.05
+#define TRAJ_MAX_ACC 0.05
 #define TRAJ_PERIOD_MS 50.0
 
 namespace rl = roboticslab;
@@ -59,14 +66,14 @@ namespace
     {
         bool doWork(const yarp::os::YarpTimerEvent & timerEvent)
         {
-            std::vector<double> position;
-            iCartesianTrajectory->getPosition(timerEvent.runCount * period, position);
+            auto H = trajectory->Pos(timerEvent.runCount * period);
+            auto position = rl::KdlVectorConverter::frameToVector(H);
             iCartesianControl->movi(position);
             return true;
         }
 
         rl::ICartesianControl * iCartesianControl;
-        rl::ICartesianTrajectory * iCartesianTrajectory;
+        KDL::Trajectory * trajectory;
         double period;
     };
 }
@@ -90,7 +97,8 @@ int main(int argc, char *argv[])
     double z = rf.check("z", yarp::os::Value(0.0), "z offset (COG)").asFloat64();
 
     double duration = rf.check("duration", yarp::os::Value(TRAJ_DURATION), "trajectory duration [s]").asFloat64();
-    double maxVel = rf.check("maxvel", yarp::os::Value(TRAJ_MAX_VEL), "trajectory max velocity [m/s]").asFloat64();
+    double maxVel = rf.check("maxVel", yarp::os::Value(TRAJ_MAX_VEL), "trajectory max velocity [m/s]").asFloat64();
+    double maxAcc = rf.check("maxAcc", yarp::os::Value(TRAJ_MAX_VEL), "trajectory max acceleration [m/s^2]").asFloat64();
     double period = rf.check("period", yarp::os::Value(TRAJ_PERIOD_MS * 0.001), "trajectory period [s]").asFloat64();
 
     // Create devices.
@@ -166,19 +174,17 @@ int main(int argc, char *argv[])
     yInfo() << "Current (left):" <<  x_leftLeg[0] << x_leftLeg[1] << x_leftLeg[2];
     yInfo() << "Desired (left):" << xd_leftLeg[0] << xd_leftLeg[1] << xd_leftLeg[2];
 
-    rl::KdlTrajectory trajectoryLeftLeg;
+    std::unique_ptr<KDL::Trajectory> trajectoryLeftLeg;
 
-    trajectoryLeftLeg.setDuration(duration);
-    trajectoryLeftLeg.setMaxVelocity(maxVel);
-    trajectoryLeftLeg.addWaypoint(x_leftLeg);
-    trajectoryLeftLeg.addWaypoint(xd_leftLeg);
-    trajectoryLeftLeg.configurePath(rl::ICartesianTrajectory::LINE);
-    trajectoryLeftLeg.configureVelocityProfile(rl::ICartesianTrajectory::TRAPEZOIDAL);
-
-    if (!trajectoryLeftLeg.create())
     {
-        yError() << "Problem creating cartesian trajectory (left leg)";
-        return 1;
+        auto H_base_start = rl::KdlVectorConverter::vectorToFrame(x_leftLeg);
+        auto H_base_end = rl::KdlVectorConverter::vectorToFrame(xd_leftLeg);
+
+        auto * interpolator = new KDL::RotationalInterpolation_SingleAxis();
+        auto * path = new KDL::Path_Line(H_base_start, H_base_end, interpolator, 1.0);
+        auto * profile = new KDL::VelocityProfile_Trap(maxVel, maxAcc);
+
+        trajectoryLeftLeg = std::make_unique<KDL::Trajectory_Segment>(path, profile, duration);
     }
 
     std::vector<double> x_rightLeg;
@@ -196,19 +202,17 @@ int main(int argc, char *argv[])
     yInfo() << "Current (right):" << x_rightLeg[0] << x_rightLeg[1] << x_rightLeg[2];
     yInfo() << "Desired (right):" << xd_rightLeg[0] << xd_rightLeg[1] << xd_rightLeg[2];
 
-    rl::KdlTrajectory trajectoryRightLeg;
+    std::unique_ptr<KDL::Trajectory> trajectoryRightLeg;
 
-    trajectoryRightLeg.setDuration(duration);
-    trajectoryRightLeg.setMaxVelocity(maxVel);
-    trajectoryRightLeg.addWaypoint(x_rightLeg);
-    trajectoryRightLeg.addWaypoint(xd_rightLeg);
-    trajectoryRightLeg.configurePath(rl::ICartesianTrajectory::LINE);
-    trajectoryRightLeg.configureVelocityProfile(rl::ICartesianTrajectory::TRAPEZOIDAL);
-
-    if (!trajectoryRightLeg.create())
     {
-        yError() << "Problem creating cartesian trajectory (right leg)";
-        return 1;
+        auto H_base_start = rl::KdlVectorConverter::vectorToFrame(x_rightLeg);
+        auto H_base_end = rl::KdlVectorConverter::vectorToFrame(xd_rightLeg);
+
+        auto * interpolator = new KDL::RotationalInterpolation_SingleAxis();
+        auto * path = new KDL::Path_Line(H_base_start, H_base_end, interpolator, 1.0);
+        auto * profile = new KDL::VelocityProfile_Trap(maxVel, maxAcc);
+
+        trajectoryRightLeg = std::make_unique<KDL::Trajectory_Segment>(path, profile, duration);
     }
 
     // Configure workers.
@@ -216,10 +220,10 @@ int main(int argc, char *argv[])
     Worker leftLegWorker, rightLegWorker;
 
     leftLegWorker.iCartesianControl = iCartesianControlLeftLeg;
-    leftLegWorker.iCartesianTrajectory = &trajectoryLeftLeg;
+    leftLegWorker.trajectory = trajectoryLeftLeg.get();
 
     rightLegWorker.iCartesianControl = iCartesianControlRightLeg;
-    rightLegWorker.iCartesianTrajectory = &trajectoryRightLeg;
+    rightLegWorker.trajectory = trajectoryRightLeg.get();
 
     leftLegWorker.period = rightLegWorker.period = period;
 

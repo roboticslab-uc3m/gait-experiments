@@ -1,12 +1,10 @@
 add_executable(squatLooped main.cpp)
 
-target_link_libraries(squatLooped YARP::YARP_OS
+target_link_libraries(squatLooped YARP::YARP_os
                                   YARP::YARP_init
                                   YARP::YARP_dev
                                   ROBOTICSLAB::KdlVectorConverterLib
                                   ROBOTICSLAB::KinematicsDynamicsInterfaces)
-
-target_compile_features(squatLooped PRIVATE cxx_lambdas)
 
 include(GNUInstallDirs)
 

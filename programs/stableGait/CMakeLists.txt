@@ -9,13 +9,11 @@ add_executable(stableGait main.cpp
                           TargetBuilder.hpp
                           TargetBuilder.cpp)
 
-target_link_libraries(stableGait YARP::YARP_OS
+target_link_libraries(stableGait YARP::YARP_os
                                  YARP::YARP_init
                                  YARP::YARP_dev
                                  ROBOTICSLAB::KdlVectorConverterLib
                                  ROBOTICSLAB::KinematicsDynamicsInterfaces)
-
-target_compile_features(stableGait PRIVATE cxx_lambdas)
 
 include(GNUInstallDirs)
 
