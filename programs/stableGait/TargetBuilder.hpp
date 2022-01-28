@@ -14,7 +14,7 @@ namespace rl = roboticslab;
 class TargetBuilder
 {
 public:
-    typedef std::vector< std::vector<double> > Targets;
+    typedef std::vector<std::vector<double>> Targets;
     TargetBuilder(rl::ICartesianControl * iCartLeft, rl::ICartesianControl * iCartRight);
     void configure(KDL::Trajectory * tCom, KDL::Trajectory * tLeft, KDL::Trajectory * tRight);
     void build(double period, Targets & vLeft, Targets & vRight);

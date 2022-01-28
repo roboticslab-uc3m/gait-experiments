@@ -12,9 +12,9 @@
 #include <kdl/trajectory_segment.hpp>
 #include <kdl/trajectory_stationary.hpp>
 
-#define DEFAULT_SQUAT_DURATION 5.0 // [s]
-#define DEFAULT_RADIUS 0.005 // [m]
-#define DEFAULT_EQ_RADIUS 1.0 // [m]
+constexpr auto DEFAULT_SQUAT_DURATION = 5.0; // [s]
+constexpr auto DEFAULT_RADIUS = 0.005; // [m]
+constexpr auto DEFAULT_EQ_RADIUS = 1.0; // [m]
 
 TrajectoryGenerator::TrajectoryGenerator(FootSpec _footSpec, double _distance, double _vel, double _acc)
     : footSpec(_footSpec),

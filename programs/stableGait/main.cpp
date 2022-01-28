@@ -56,21 +56,21 @@ make -j$(nproc)
 #include "TrajectoryGenerator.hpp"
 #include "TargetBuilder.hpp"
 
-#define DEFAULT_TRAJ_VEL 0.175 // [m/s]
-#define DEFAULT_TRAJ_ACC 5.0 // [m/s^2]
-#define DEFAULT_CMD_PERIOD 0.05 // [s]
-#define DEFAULT_FOOT_LENGTH 0.245 // [m]
-#define DEFAULT_FOOT_WIDTH 0.14 // [m]
-#define DEFAULT_FOOT_MARGIN 0.02 // [m]
-#define DEFAULT_FOOT_STABLE 0.04 // [m]
-#define DEFAULT_FOOT_LIFT 0.005 // [m]
-#define DEFAULT_GAIT_SEP 0.06 // [m]
-#define DEFAULT_GAIT_HOP 0.01 // [m]
-#define DEFAULT_TOLERANCE 0.001 // [m]
+constexpr auto DEFAULT_TRAJ_VEL = 0.175; // [m/s]
+constexpr auto DEFAULT_TRAJ_ACC = 5.0; // [m/s^2]
+constexpr auto DEFAULT_CMD_PERIOD = 0.05; // [s]
+constexpr auto DEFAULT_FOOT_LENGTH = 0.245; // [m]
+constexpr auto DEFAULT_FOOT_WIDTH = 0.14; // [m]
+constexpr auto DEFAULT_FOOT_MARGIN = 0.02; // [m]
+constexpr auto DEFAULT_FOOT_STABLE = 0.04; // [m]
+constexpr auto DEFAULT_FOOT_LIFT = 0.005; // [m]
+constexpr auto DEFAULT_GAIT_SEP = 0.06; // [m]
+constexpr auto DEFAULT_GAIT_HOP = 0.01; // [m]
+constexpr auto DEFAULT_TOLERANCE = 0.001; // [m]
 
 namespace rl = roboticslab;
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
     // Find YARP network.
 
@@ -181,10 +181,11 @@ int main(int argc, char *argv[])
 
     // Create devices (left leg).
 
-    yarp::os::Property leftLegDeviceOptions;
-    leftLegDeviceOptions.put("device", "CartesianControlClient");
-    leftLegDeviceOptions.put("cartesianRemote", robotPrefix + "/leftLeg/CartesianControl");
-    leftLegDeviceOptions.put("cartesianLocal", "/stableGait/leftLeg");
+    yarp::os::Property leftLegDeviceOptions {
+        {"device", yarp::os::Value("CartesianControlClient")},
+        {"cartesianRemote", yarp::os::Value(robotPrefix + "/leftLeg/CartesianControl")},
+        {"cartesianLocal", yarp::os::Value("/stableGait/leftLeg")}
+    };
 
     yarp::dev::PolyDriver leftLegDevice(leftLegDeviceOptions);
 
@@ -210,10 +211,11 @@ int main(int argc, char *argv[])
 
     // Create devices (right leg).
 
-    yarp::os::Property rightLegDeviceOptions;
-    rightLegDeviceOptions.put("device", "CartesianControlClient");
-    rightLegDeviceOptions.put("cartesianRemote", robotPrefix + "/rightLeg/CartesianControl");
-    rightLegDeviceOptions.put("cartesianLocal", "/stableGait/rightLeg");
+    yarp::os::Property rightLegDeviceOptions {
+        {"device", yarp::os::Value("CartesianControlClient")},
+        {"cartesianRemote", yarp::os::Value(robotPrefix + "/rightLeg/CartesianControl")},
+        {"cartesianLocal", yarp::os::Value("/stableGait/rightLeg")}
+    };
 
     yarp::dev::PolyDriver rightLegDevice(rightLegDeviceOptions);
 

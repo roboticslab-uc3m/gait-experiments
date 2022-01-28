@@ -39,25 +39,25 @@ void StepGenerator::generate(double distance, std::vector<KDL::Frame> & steps, s
 
     KDL::Rotation rot = initialPose.M;
 
-    steps.push_back(KDL::Frame(rot, KDL::Vector(0, -initialSep, 0)));
-    steps.push_back(KDL::Frame(rot, KDL::Vector(0, initialSep, 0)));
+    steps.emplace_back(rot, KDL::Vector(0, -initialSep, 0));
+    steps.emplace_back(rot, KDL::Vector(0, initialSep, 0));
 
-    com.push_back(KDL::Frame(KDL::Vector(0, 0, initialSquat)));
-    com.push_back(KDL::Frame(KDL::Vector(0, 0, hopSquat)));
-    com.push_back(KDL::Frame(KDL::Vector(0, stableSep, hopSquat)));
+    com.emplace_back(KDL::Vector(0, 0, initialSquat));
+    com.emplace_back(KDL::Vector(0, 0, hopSquat));
+    com.emplace_back(KDL::Vector(0, stableSep, hopSquat));
 
     if (distance <= gaitSpec.step)
     {
         stepFwd *= distance / gaitSpec.step;
 
-        steps.push_back(KDL::Frame(rot, KDL::Vector(distance, -initialSep, 0)));
-        steps.push_back(KDL::Frame(rot, KDL::Vector(distance, initialSep, 0)));
+        steps.emplace_back(rot, KDL::Vector(distance, -initialSep, 0));
+        steps.emplace_back(rot, KDL::Vector(distance, initialSep, 0));
 
-        com.push_back(KDL::Frame(KDL::Vector(stepFwd, marginSep, hopSquat)));
-        com.push_back(KDL::Frame(KDL::Vector(distance - marginFwd, -marginSep, maxSquat)));
-        com.push_back(KDL::Frame(KDL::Vector(distance, -stableSep, hopSquat)));
-        com.push_back(KDL::Frame(KDL::Vector(distance, 0, hopSquat)));
-        com.push_back(KDL::Frame(KDL::Vector(distance, 0, initialSquat)));
+        com.emplace_back(KDL::Vector(stepFwd, marginSep, hopSquat));
+        com.emplace_back(KDL::Vector(distance - marginFwd, -marginSep, maxSquat));
+        com.emplace_back(KDL::Vector(distance, -stableSep, hopSquat));
+        com.emplace_back(KDL::Vector(distance, 0, hopSquat));
+        com.emplace_back(KDL::Vector(distance, 0, initialSquat));
 
         return;
     }
@@ -78,25 +78,25 @@ void StepGenerator::generate(double distance, std::vector<KDL::Frame> & steps, s
         {
             if (movingRightFoot)
             {
-                steps.push_back(KDL::Frame(rot, KDL::Vector(distance, -initialSep, 0)));
-                steps.push_back(KDL::Frame(rot, KDL::Vector(distance, initialSep, 0)));
+                steps.emplace_back(rot, KDL::Vector(distance, -initialSep, 0));
+                steps.emplace_back(rot, KDL::Vector(distance, initialSep, 0));
 
-                com.push_back(KDL::Frame(KDL::Vector(previousTravelled + stepFwd, marginSep, maxSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled - marginFwd, -marginSep, maxSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled, -stableSep, hopSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled, 0, hopSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled, 0, initialSquat)));
+                com.emplace_back(KDL::Vector(previousTravelled + stepFwd, marginSep, maxSquat));
+                com.emplace_back(KDL::Vector(travelled - marginFwd, -marginSep, maxSquat));
+                com.emplace_back(KDL::Vector(travelled, -stableSep, hopSquat));
+                com.emplace_back(KDL::Vector(travelled, 0, hopSquat));
+                com.emplace_back(KDL::Vector(travelled, 0, initialSquat));
             }
             else
             {
-                steps.push_back(KDL::Frame(rot, KDL::Vector(distance, initialSep, 0)));
-                steps.push_back(KDL::Frame(rot, KDL::Vector(distance, -initialSep, 0)));
+                steps.emplace_back(rot, KDL::Vector(distance, initialSep, 0));
+                steps.emplace_back(rot, KDL::Vector(distance, -initialSep, 0));
 
-                com.push_back(KDL::Frame(KDL::Vector(previousTravelled + stepFwd, -marginSep, maxSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled - marginFwd, marginSep, maxSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled, stableSep, hopSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled, 0, hopSquat)));
-                com.push_back(KDL::Frame(KDL::Vector(travelled, 0, initialSquat)));
+                com.emplace_back(KDL::Vector(previousTravelled + stepFwd, -marginSep, maxSquat));
+                com.emplace_back(KDL::Vector(travelled - marginFwd, marginSep, maxSquat));
+                com.emplace_back(KDL::Vector(travelled, stableSep, hopSquat));
+                com.emplace_back(KDL::Vector(travelled, 0, hopSquat));
+                com.emplace_back(KDL::Vector(travelled, 0, initialSquat));
             }
 
             break;
@@ -104,19 +104,19 @@ void StepGenerator::generate(double distance, std::vector<KDL::Frame> & steps, s
 
         if (movingRightFoot)
         {
-            steps.push_back(KDL::Frame(rot, KDL::Vector(travelled, -stepSep, 0)));
+            steps.emplace_back(rot, KDL::Vector(travelled, -stepSep, 0));
 
-            com.push_back(KDL::Frame(KDL::Vector(previousTravelled + stepFwd, marginSep, maxSquat)));
-            com.push_back(KDL::Frame(KDL::Vector(travelled - marginFwd, -marginSep, maxSquat)));
-            com.push_back(KDL::Frame(KDL::Vector(travelled, -stableSep, hopSquat)));
+            com.emplace_back(KDL::Vector(previousTravelled + stepFwd, marginSep, maxSquat));
+            com.emplace_back(KDL::Vector(travelled - marginFwd, -marginSep, maxSquat));
+            com.emplace_back(KDL::Vector(travelled, -stableSep, hopSquat));
         }
         else
         {
-            steps.push_back(KDL::Frame(rot, KDL::Vector(travelled, stepSep, 0)));
+            steps.emplace_back(rot, KDL::Vector(travelled, stepSep, 0));
 
-            com.push_back(KDL::Frame(KDL::Vector(previousTravelled + stepFwd, -marginSep, maxSquat)));
-            com.push_back(KDL::Frame(KDL::Vector(travelled - marginFwd, marginSep, maxSquat)));
-            com.push_back(KDL::Frame(KDL::Vector(travelled, stableSep, hopSquat)));
+            com.emplace_back(KDL::Vector(previousTravelled + stepFwd, -marginSep, maxSquat));
+            com.emplace_back(KDL::Vector(travelled - marginFwd, marginSep, maxSquat));
+            com.emplace_back(KDL::Vector(travelled, stableSep, hopSquat));
         }
 
         movingRightFoot = !movingRightFoot;

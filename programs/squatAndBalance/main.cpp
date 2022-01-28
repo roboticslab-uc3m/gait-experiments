@@ -53,10 +53,10 @@ make -j$(nproc)
 #include <ICartesianControl.h>
 #include <KdlVectorConverter.hpp>
 
-#define TRAJ_DURATION 10.0
-#define TRAJ_MAX_VEL 0.05
-#define TRAJ_MAX_ACC 0.05
-#define TRAJ_PERIOD_MS 50.0
+constexpr auto TRAJ_DURATION = 10.0;
+constexpr auto TRAJ_MAX_VEL = 0.05;
+constexpr auto TRAJ_MAX_ACC = 0.05;
+constexpr auto TRAJ_PERIOD_MS = 50.0;
 
 namespace rl = roboticslab;
 
@@ -78,7 +78,7 @@ namespace
     };
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
     yarp::os::Network yarp;
 
@@ -130,10 +130,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    yarp::os::Property rightLegDeviceOptions;
-    rightLegDeviceOptions.put("device", "CartesianControlClient");
-    rightLegDeviceOptions.put("cartesianRemote", robotPrefix + "/rightLeg/CartesianControl");
-    rightLegDeviceOptions.put("cartesianLocal", "/squatAndBalance/rightLeg");
+    yarp::os::Property rightLegDeviceOptions {
+        {"device", yarp::os::Value("CartesianControlClient")},
+        {"cartesianRemote", yarp::os::Value(robotPrefix + "/rightLeg/CartesianControl")},
+        {"cartesianLocal", yarp::os::Value("/squatAndBalance/rightLeg")}
+    };
 
     yarp::dev::PolyDriver rightLegDevice(rightLegDeviceOptions);
 

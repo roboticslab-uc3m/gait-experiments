@@ -50,14 +50,14 @@ make -j$(nproc)
 #include <ICartesianControl.h>
 #include <KdlVectorConverter.hpp>
 
-#define TRAJ_DURATION 10.0
-#define TRAJ_MAX_VEL 0.05
-#define TRAJ_MAX_ACC 0.2
-#define TRAJ_PERIOD_MS 50.0
+constexpr auto TRAJ_DURATION = 10.0;
+constexpr auto TRAJ_MAX_VEL = 0.05;
+constexpr auto TRAJ_MAX_ACC = 0.2;
+constexpr auto TRAJ_PERIOD_MS = 50.0;
 
 namespace rl = roboticslab;
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
     // Find YARP network.
 
@@ -97,10 +97,11 @@ int main(int argc, char *argv[])
 
     // Create devices (left leg).
 
-    yarp::os::Property leftLegDeviceOptions;
-    leftLegDeviceOptions.put("device", "CartesianControlClient");
-    leftLegDeviceOptions.put("cartesianRemote", robotPrefix + "/leftLeg/CartesianControl");
-    leftLegDeviceOptions.put("cartesianLocal", "/squatLooped/leftLeg");
+    yarp::os::Property leftLegDeviceOptions {
+        {"device", yarp::os::Value("CartesianControlClient")},
+        {"cartesianRemote", yarp::os::Value(robotPrefix + "/leftLeg/CartesianControl")},
+        {"cartesianLocal", yarp::os::Value("/squatLooped/leftLeg")}
+    };
 
     yarp::dev::PolyDriver leftLegDevice(leftLegDeviceOptions);
 
@@ -126,10 +127,11 @@ int main(int argc, char *argv[])
 
     // Create devices (right leg).
 
-    yarp::os::Property rightLegDeviceOptions;
-    rightLegDeviceOptions.put("device", "CartesianControlClient");
-    rightLegDeviceOptions.put("cartesianRemote", robotPrefix + "/rightLeg/CartesianControl");
-    rightLegDeviceOptions.put("cartesianLocal", "/squatLooped/rightLeg");
+    yarp::os::Property rightLegDeviceOptions {
+        {"device", yarp::os::Value("CartesianControlClient")},
+        {"cartesianRemote", yarp::os::Value(robotPrefix + "/rightLeg/CartesianControl")},
+        {"cartesianLocal", yarp::os::Value("/squatLooped/rightLeg")}
+    };
 
     yarp::dev::PolyDriver rightLegDevice(rightLegDeviceOptions);
 
