@@ -2,7 +2,7 @@
 
 /**
  * @ingroup gait-experiments-programs
- * \defgroup stableGait stableGait
+ * @defgroup stableGait stableGait
  *
  * <b>Building</b>
  *

@@ -15,7 +15,4 @@ target_link_libraries(stableGait YARP::YARP_os
                                  ROBOTICSLAB::KdlVectorConverterLib
                                  ROBOTICSLAB::KinematicsDynamicsInterfaces)
 
-include(GNUInstallDirs)
-
-install(TARGETS stableGait
-        DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS stableGait)

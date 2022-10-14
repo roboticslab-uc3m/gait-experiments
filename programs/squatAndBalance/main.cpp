@@ -2,7 +2,7 @@
 
 /**
  * @ingroup gait-experiments-programs
- * \defgroup squatAndBalance squatAndBalance
+ * @defgroup squatAndBalance squatAndBalance
  *
  * <b>Building</b>
  *
@@ -103,10 +103,11 @@ int main(int argc, char * argv[])
 
     // Create devices.
 
-    yarp::os::Property leftLegDeviceOptions;
-    leftLegDeviceOptions.put("device", "CartesianControlClient");
-    leftLegDeviceOptions.put("cartesianRemote", robotPrefix + "/leftLeg/CartesianControl");
-    leftLegDeviceOptions.put("cartesianLocal", "/squatAndBalance/leftLeg");
+    yarp::os::Property leftLegDeviceOptions {
+        {"device", yarp::os::Value("CartesianControlClient")},
+        {"cartesianRemote", yarp::os::Value(robotPrefix + "/leftLeg/CartesianControl")},
+        {"cartesianLocal", yarp::os::Value("/squatAndBalance/leftLeg")}
+    };
 
     yarp::dev::PolyDriver leftLegDevice(leftLegDeviceOptions);
 

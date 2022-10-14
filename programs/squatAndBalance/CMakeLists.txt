@@ -7,7 +7,4 @@ target_link_libraries(squatAndBalance YARP::YARP_os
                                       ROBOTICSLAB::KdlVectorConverterLib
                                       ROBOTICSLAB::KinematicsDynamicsInterfaces)
 
-include(GNUInstallDirs)
-
-install(TARGETS squatAndBalance
-        DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS squatAndBalance)

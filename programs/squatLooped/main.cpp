@@ -2,7 +2,7 @@
 
 /**
  * @ingroup gait-experiments-programs
- * \defgroup squatLooped squatLooped
+ * @defgroup squatLooped squatLooped
  *
  * <b>Building</b>
  *

@@ -6,7 +6,4 @@ target_link_libraries(squatLooped YARP::YARP_os
                                   ROBOTICSLAB::KdlVectorConverterLib
                                   ROBOTICSLAB::KinematicsDynamicsInterfaces)
 
-include(GNUInstallDirs)
-
-install(TARGETS squatLooped
-        DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS squatLooped)

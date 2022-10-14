@@ -1,2 +1,2 @@
 # gait-experiments
-Humanoid gait stuff, still WIP
+Humanoid gait stuff, still WIP.
