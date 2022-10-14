@@ -16,8 +16,8 @@ void StepGenerator::configure(GaitSpec _gaitSpec)
 
 void StepGenerator::generate(double distance, std::vector<KDL::Frame> & steps, std::vector<KDL::Frame> & com)
 {
-    steps.empty();
-    com.empty();
+    steps.clear();
+    com.clear();
 
     double initialSep = initialPose.p.y();
     double marginSep = footSpec.margin + gaitSpec.sep / 2.0;
