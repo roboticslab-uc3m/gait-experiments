@@ -1,0 +1,84 @@
+<application>
+    <name>gait-related apps (real)</name>
+
+    <module>
+        <name>multipleanalogsensorsserver</name>
+        <parameters>--subdevice Jr3 --name /jr3 --period 5 --filter 2 --dextrorotary</parameters>
+        <node>2.2.2.105</node>
+        <deployer>yarpdev</deployer>
+    </module>
+
+    <module>
+        <name>launchCanBus</name>
+        <parameters>--from locomotion.ini</parameters>
+        <node>locomotion</node>
+    </module>
+
+    <module>
+        <name>gnome-terminal</name>
+        <parameters>-e "yarp rpc /teo/leftLeg/rpc:i"</parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>gnome-terminal</name>
+        <parameters>-e "yarp rpc /teo/rightLeg/rpc:i"</parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>gnome-terminal</name>
+        <parameters>-e "yarp rpc /teo/trunk/rpc:i"</parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>BasicCartesianControl</name>
+        <parameters>--name /teo/leftLeg/CartesianControl --kinematics teo-leftLeg.ini --local /BasicCartesianControl/teo/leftLeg --remote /teo/leftLeg --ik st --invKinStrategy humanoidGait</parameters>
+        <node>localhost</node>
+        <deployer>yarpdev</deployer>
+    </module>
+
+    <module>
+        <name>BasicCartesianControl</name>
+        <parameters>--name /teo/rightLeg/CartesianControl --kinematics teo-rightLeg.ini --local /BasicCartesianControl/teo/rightLeg --remote /teo/rightLeg --ik st --invKinStrategy humanoidGait</parameters>
+        <node>localhost</node>
+        <deployer>yarpdev</deployer>
+    </module>
+
+    <module>
+        <name>squatAndBalance</name>
+        <parameters>--z 0.045</parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>squatAndBalance</name>
+        <parameters>--y 0.1</parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>squatAndBalance</name>
+        <parameters>--y -0.2</parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>squatAndBalance</name>
+        <parameters>--z -0.045</parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>squatLooped</name>
+        <parameters>--z 0.045 --squats 1</parameters>
+        <node>localhost</node>
+    </module>
+
+    <module>
+        <name>stableGait</name>
+        <parameters>--distance 1.0 --dry</parameters>
+        <node>localhost</node>
+    </module>
+</application>
