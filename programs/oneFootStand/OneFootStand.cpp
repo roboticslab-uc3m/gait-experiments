@@ -3,6 +3,7 @@
 #include "OneFootStand.hpp"
 
 #include <cmath> // std::abs, std::copysign
+
 #include <algorithm> // std::copy, std::max, std::min
 
 #include <yarp/os/LogComponent.h>
@@ -19,6 +20,34 @@ using namespace roboticslab;
 namespace
 {
     YARP_LOG_COMPONENT(OFS, "rl.OneFootStand")
+
+    bool parseFrameRotation(const yarp::os::Value & value, const std::string & name, KDL::Rotation & rot)
+    {
+        if (!value.isNull())
+        {
+            if (!value.isList() || value.asList()->size() != 3)
+            {
+                yCError(OFS) << "Parameter" << name << "must be a list of 3 doubles";
+                return false;
+            }
+
+            yCInfo(OFS) << name << "RPY [deg]:" << value.toString();
+
+            auto roll = value.asList()->get(0).asFloat64() * KDL::deg2rad;
+            auto pitch = value.asList()->get(1).asFloat64() * KDL::deg2rad;
+            auto yaw = value.asList()->get(2).asFloat64() * KDL::deg2rad;
+
+            // sequence (old axes): 1. R_x(roll), 2. R_y(pitch), 3. R_z(yaw)
+            rot = KDL::Rotation::RPY(roll, pitch, yaw);
+        }
+        else
+        {
+            yCInfo(OFS) << "Using no" << name;
+            rot = KDL::Rotation::Identity();
+        }
+
+        return true;
+    }
 }
 
 constexpr auto DEFAULT_LOCAL_PREFIX = "/oneFootStand";
@@ -71,30 +100,17 @@ bool OneFootStand::configure(yarp::os::ResourceFinder & rf)
 
     auto sensorFrameRPY = rf.check("sensorFrameRPY", yarp::os::Value::getNullValue(), "sensor frame RPY rotation regarding TCP frame [deg]");
 
-    if (!sensorFrameRPY.isNull())
+    if (!parseFrameRotation(sensorFrameRPY, "sensor frame", R_N_sensor))
     {
-        if (!sensorFrameRPY.isList() || sensorFrameRPY.asList()->size() != 3)
-        {
-            yCError(OFS) << "sensorFrameRPY must be a list of 3 doubles";
-            return false;
-        }
-
-        yCInfo(OFS) << "Sensor frame RPY [deg]:" << sensorFrameRPY.toString();
-
-        auto roll = sensorFrameRPY.asList()->get(0).asFloat64() * KDL::deg2rad;
-        auto pitch = sensorFrameRPY.asList()->get(1).asFloat64() * KDL::deg2rad;
-        auto yaw = sensorFrameRPY.asList()->get(2).asFloat64() * KDL::deg2rad;
-
-        // sequence (old axes): 1. R_x(roll), 2. R_y(pitch), 3. R_z(yaw)
-        R_N_sensor = KDL::Rotation::RPY(roll, pitch, yaw);
-    }
-    else
-    {
-        yCInfo(OFS) << "Using no sensor frame";
-        R_N_sensor = KDL::Rotation::Identity();
+        return false;
     }
 
-    soleNormal = R_N_sensor * KDL::Vector(0.0, 0.0, 1.0); // assume sole normal is the sensor's Z axis
+    auto soleFrameRPY = rf.check("soleFrameRPY", yarp::os::Value::getNullValue(), "sole frame RPY rotation regarding TCP frame [deg]");
+
+    if (!parseFrameRotation(soleFrameRPY, "sole frame", R_N_sole))
+    {
+        return false;
+    }
 
     auto localPrefix = rf.check("local", yarp::os::Value(DEFAULT_LOCAL_PREFIX), "local port prefix").asString();
 
@@ -287,14 +303,12 @@ bool OneFootStand::selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const
     return true;
 }
 
-void OneFootStand::publishProjection(const KDL::Vector & zmp)
+void OneFootStand::publishProjection(const KDL::Vector & p_N_zmp)
 {
-    KDL::Vector projection = zmp - (zmp * soleNormal) * soleNormal;
+    KDL::Vector p_sole_zmp = R_N_sole.Inverse() * p_N_zmp;
 
-    zmpPort.prepare() = {
-        yarp::os::Value(projection.x()),
-        yarp::os::Value(projection.y()),
-    };
+    // R_N_sole should make Z axis orthogonal to the sole plane, thus we only need X and Y
+    zmpPort.prepare() = {yarp::os::Value(p_sole_zmp.x()), yarp::os::Value(p_sole_zmp.y())};
 
     zmpPort.write();
 }

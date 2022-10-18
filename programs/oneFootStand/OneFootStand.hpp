@@ -48,7 +48,7 @@ protected:
 private:
     bool readSensor(KDL::Wrench & wrench_N) const;
     bool selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const;
-    void publishProjection(const KDL::Vector & zmp);
+    void publishProjection(const KDL::Vector & p_N_zmp);
     std::vector<double> computeStep(const KDL::Vector & p);
 
     yarp::dev::PolyDriver cartesianDevice;
@@ -59,7 +59,7 @@ private:
     yarp::dev::ISixAxisForceTorqueSensors * sensor;
 
     KDL::Rotation R_N_sensor;
-    KDL::Vector soleNormal;
+    KDL::Rotation R_N_sole;
 
     bool dryRun;
 
