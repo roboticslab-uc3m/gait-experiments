@@ -94,6 +94,8 @@ bool OneFootStand::configure(yarp::os::ResourceFinder & rf)
         R_N_sensor = KDL::Rotation::Identity();
     }
 
+    soleNormal = R_N_sensor * KDL::Vector(0.0, 0.0, 1.0); // assume sole normal is the sensor's Z axis
+
     auto localPrefix = rf.check("local", yarp::os::Value(DEFAULT_LOCAL_PREFIX), "local port prefix").asString();
 
     // ----- sensor device -----
@@ -219,6 +221,16 @@ bool OneFootStand::configure(yarp::os::ResourceFinder & rf)
         return false;
     }
 
+    // ----- ZMP publisher port -----
+
+    if (!zmpPort.open(localPrefix + "/zmp:o"))
+    {
+        yCError(OFS) << "Failed to open ZMP publisher port" << zmpPort.getName();
+        return false;
+    }
+
+    zmpPort.setWriteOnly();
+
     return yarp::os::PeriodicThread::setPeriod(period) && yarp::os::PeriodicThread::start();
 }
 
@@ -275,6 +287,18 @@ bool OneFootStand::selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const
     return true;
 }
 
+void OneFootStand::publishProjection(const KDL::Vector & zmp)
+{
+    KDL::Vector projection = zmp - (zmp * soleNormal) * soleNormal;
+
+    zmpPort.prepare() = {
+        yarp::os::Value(projection.x()),
+        yarp::os::Value(projection.y()),
+    };
+
+    zmpPort.write();
+}
+
 std::vector<double> OneFootStand::computeStep(const KDL::Vector & p)
 {
     std::vector<double> x(6, 0.0);
@@ -324,6 +348,11 @@ void OneFootStand::run()
         return;
     }
 
+    if (zmpPort.getOutputCount() > 0)
+    {
+        publishProjection(p_N_zmp);
+    }
+
     auto xd = computeStep(p_N_zmp);
     yCDebug(OFS) << xd;
     if (!dryRun) iCartesianControl->movi(xd);
@@ -347,6 +376,8 @@ double OneFootStand::getPeriod()
 
 bool OneFootStand::close()
 {
+    zmpPort.interrupt();
+    zmpPort.close();
     cartesianDevice.close();
     sensorDevice.close();
     return true;

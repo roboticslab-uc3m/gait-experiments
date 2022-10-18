@@ -5,6 +5,8 @@
 
 #include <vector>
 
+#include <yarp/os/Bottle.h>
+#include <yarp/os/BufferedPort.h>
 #include <yarp/os/PeriodicThread.h>
 #include <yarp/os/RFModule.h>
 
@@ -46,6 +48,7 @@ protected:
 private:
     bool readSensor(KDL::Wrench & wrench_N) const;
     bool selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const;
+    void publishProjection(const KDL::Vector & zmp);
     std::vector<double> computeStep(const KDL::Vector & p);
 
     yarp::dev::PolyDriver cartesianDevice;
@@ -56,6 +59,7 @@ private:
     yarp::dev::ISixAxisForceTorqueSensors * sensor;
 
     KDL::Rotation R_N_sensor;
+    KDL::Vector soleNormal;
 
     bool dryRun;
 
@@ -65,6 +69,8 @@ private:
     double maxAcceleration;
 
     double previousStep {0.0};
+
+    yarp::os::BufferedPort<yarp::os::Bottle> zmpPort;
 };
 
 } // namespace roboticslab
