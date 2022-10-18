@@ -3,6 +3,8 @@
 #ifndef __ONE_FOOT_STAND_HPP__
 #define __ONE_FOOT_STAND_HPP__
 
+#include <vector>
+
 #include <yarp/os/PeriodicThread.h>
 #include <yarp/os/RFModule.h>
 
@@ -42,7 +44,9 @@ protected:
     void run() override;
 
 private:
-    bool readSensor(KDL::Wrench & wrench) const;
+    bool readSensor(KDL::Wrench & wrench_N) const;
+    bool selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const;
+    std::vector<double> computeStep(const KDL::Vector & p);
 
     yarp::dev::PolyDriver cartesianDevice;
     roboticslab::ICartesianControl * iCartesianControl;
@@ -52,13 +56,15 @@ private:
     yarp::dev::ISixAxisForceTorqueSensors * sensor;
 
     KDL::Rotation R_N_sensor;
-    KDL::Wrench initialOffset;
 
     bool dryRun;
-    double linGain;
-    double rotGain;
-    double forceDeadband;
-    double torqueDeadband;
+
+    double period;
+    double ikStep;
+    double maxSpeed;
+    double maxAcceleration;
+
+    double previousStep {0.0};
 };
 
 } // namespace roboticslab

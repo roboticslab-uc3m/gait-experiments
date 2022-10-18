@@ -2,6 +2,9 @@
 
 #include "OneFootStand.hpp"
 
+#include <cmath> // std::abs, std::copysign
+#include <algorithm> // std::copy, std::max, std::min
+
 #include <yarp/os/LogComponent.h>
 #include <yarp/os/LogStream.h>
 #include <yarp/os/Property.h>
@@ -9,7 +12,7 @@
 
 #include <kdl/utilities/utility.h> // KDL::deg2rad
 
-#include "KdlVectorConverter.hpp"
+#include <KdlVectorConverter.hpp> // TODO: unused
 
 using namespace roboticslab;
 
@@ -19,28 +22,52 @@ namespace
 }
 
 constexpr auto DEFAULT_LOCAL_PREFIX = "/oneFootStand";
-constexpr auto DEFAULT_PERIOD = 0.02;
-constexpr auto DEFAULT_LIN_GAIN = 0.01;
-constexpr auto DEFAULT_ROT_GAIN = 0.02;
-constexpr auto DEFAULT_FORCE_DEADBAND = 1.0;
-constexpr auto DEFAULT_TORQUE_DEADBAND = 1.0;
+constexpr auto DEFAULT_IK_STEP = 0.001; // [m]
+constexpr auto DEFAULT_MAX_SPEED = 0.01; // [m/s]
+constexpr auto DEFAULT_MAX_ACCELERATION = 0.1; // [m/s^2]
 
 bool OneFootStand::configure(yarp::os::ResourceFinder & rf)
 {
     yCDebug(OFS) << "Config:" << rf.toString();
 
-    auto period = rf.check("period", yarp::os::Value(DEFAULT_PERIOD), "period [s]").asFloat64();
+    period = rf.check("periodMs", yarp::os::Value(0), "period [ms]").asInt32() * 0.001;
+
+    if (period <= 0)
+    {
+        yCError(OFS) << "Missing or invalid period parameter:" << static_cast<int>(period * 1000) << "(ms)";
+        return false;
+    }
+
+    ikStep = rf.check("ikStep", yarp::os::Value(DEFAULT_IK_STEP), "IK step [m]").asFloat64();
+
+    if (ikStep <= 0.0)
+    {
+        yCError(OFS) << "Invalid IK step parameter:" << ikStep << "(m)";
+        return false;
+    }
+
+    maxSpeed = rf.check("maxSpeed", yarp::os::Value(DEFAULT_MAX_SPEED), "max speed [m/s]").asFloat64();
+
+    if (maxSpeed <= 0.0)
+    {
+        yCError(OFS) << "Invalid max speed parameter:" << maxSpeed << "(m/s)";
+        return false;
+    }
+
+    maxAcceleration = rf.check("maxAcceleration", yarp::os::Value(DEFAULT_MAX_ACCELERATION), "max acceleration [m/s^2]").asFloat64();
+
+    if (maxAcceleration <= 0.0)
+    {
+        yCError(OFS) << "Invalid max acceleration parameter:" << maxAcceleration << "(m/s^2)";
+        return false;
+    }
 
     dryRun = rf.check("dryRun", "process sensor loops, but don't send motion command");
-    linGain = rf.check("linGain", yarp::os::Value(DEFAULT_LIN_GAIN), "linear gain").asFloat64();
-    rotGain = rf.check("rotGain", yarp::os::Value(DEFAULT_ROT_GAIN), "rotational gain").asFloat64();
-    forceDeadband = rf.check("forceDeadband", yarp::os::Value(DEFAULT_FORCE_DEADBAND), "force deadband [N]").asFloat64();
-    torqueDeadband = rf.check("torqueDeadband", yarp::os::Value(DEFAULT_TORQUE_DEADBAND), "torque deadband [Nm]").asFloat64();
 
-    yCInfo(OFS) << "Using linear gain:" << linGain;
-    yCInfo(OFS) << "Using rotational gain:" << rotGain;
-    yCInfo(OFS) << "Using force deadband [N]:" << forceDeadband;
-    yCInfo(OFS) << "Using torque deadband [Nm]:" << torqueDeadband;
+    if (dryRun)
+    {
+        yCInfo(OFS) << "Dry run mode enabled, robot will perform no motion";
+    }
 
     auto sensorFrameRPY = rf.check("sensorFrameRPY", yarp::os::Value::getNullValue(), "sensor frame RPY rotation regarding TCP frame [deg]");
 
@@ -139,78 +166,63 @@ bool OneFootStand::configure(yarp::os::ResourceFinder & rf)
         return false;
     }
 
-    if (!readSensor(initialOffset))
+    // ----- cartesian device -----
+
+    if (!rf.check("cartesianRemote", "remote cartesian port to connect to"))
     {
-        yCError(OFS) << "Failed to read sensor";
+        yCError(OFS) << "Missing parameter: cartesianRemote";
         return false;
     }
 
-    // ----- cartesian device -----
+    auto cartesianRemote = rf.find("cartesianRemote").asString();
+
+    yarp::os::Property cartesianOptions {
+        {"device", yarp::os::Value("CartesianControlClient")},
+        {"cartesianRemote", yarp::os::Value(cartesianRemote)},
+        {"cartesianLocal", yarp::os::Value(localPrefix + cartesianRemote)}
+    };
+
+    if (!cartesianDevice.open(cartesianOptions))
+    {
+        yCError(OFS) << "Failed to open cartesian device";
+        return false;
+    }
+
+    if (!cartesianDevice.view(iCartesianControl))
+    {
+        yCError(OFS) << "Failed to view cartesian control interface";
+        return false;
+    }
 
     if (!dryRun)
     {
-        if (!rf.check("cartesianRemote", "remote cartesian port to connect to"))
+        std::map<int, double> params;
+
+        if (!iCartesianControl->getParameters(params))
         {
-            yCError(OFS) << "Missing parameter: cartesianRemote";
+            yCError(OFS) << "Unable to retrieve cartesian configuration parameters";
             return false;
         }
 
-        auto cartesianRemote = rf.find("cartesianRemote").asString();
+        bool usingStreamingPreset = params.find(VOCAB_CC_CONFIG_STREAMING_CMD) != params.end();
 
-        yarp::os::Property cartesianOptions {
-            {"device", yarp::os::Value("CartesianControlClient")},
-            {"cartesianRemote", yarp::os::Value(cartesianRemote)},
-            {"cartesianLocal", yarp::os::Value(localPrefix + cartesianRemote)}
-        };
-
-        if (!cartesianDevice.open(cartesianOptions))
+        if (usingStreamingPreset && !iCartesianControl->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
         {
-            yCError(OFS) << "Failed to open cartesian device";
+            yCWarning(OFS) << "Unable to preset streaming command";
             return false;
-        }
-
-        if (!cartesianDevice.view(iCartesianControl))
-        {
-            yCError(OFS) << "Failed to view cartesian control interface";
-            return false;
-        }
-
-        if (!dryRun)
-        {
-            std::map<int, double> params;
-
-            if (!iCartesianControl->getParameters(params))
-            {
-                yCError(OFS) << "Unable to retrieve cartesian configuration parameters";
-                return false;
-            }
-
-            bool usingStreamingPreset = params.find(VOCAB_CC_CONFIG_STREAMING_CMD) != params.end();
-
-            if (usingStreamingPreset && !iCartesianControl->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_TWIST))
-            {
-                yCWarning(OFS) << "Unable to preset streaming command";
-                return false;
-            }
-
-            if (!iCartesianControl->setParameter(VOCAB_CC_CONFIG_FRAME, ICartesianSolver::TCP_FRAME))
-            {
-                yCWarning(OFS) << "Unable to set TCP frame";
-                return false;
-            }
         }
     }
-    else if (dryRun)
+
+    if (!iCartesianControl->setParameter(VOCAB_CC_CONFIG_FRAME, ICartesianSolver::TCP_FRAME))
     {
-        yCInfo(OFS) << "Dry run mode enabled, robot will perform no motion";
+        yCWarning(OFS) << "Unable to set TCP frame";
+        return false;
     }
 
-    yarp::os::PeriodicThread::setPeriod(period);
-
-    return yarp::os::PeriodicThread::start();
+    return yarp::os::PeriodicThread::setPeriod(period) && yarp::os::PeriodicThread::start();
 }
 
-bool OneFootStand::readSensor(KDL::Wrench & wrench) const
+bool OneFootStand::readSensor(KDL::Wrench & wrench_N) const
 {
     yarp::sig::Vector outSensor;
 
@@ -220,58 +232,101 @@ bool OneFootStand::readSensor(KDL::Wrench & wrench) const
         return false;
     }
 
-    KDL::Wrench currentWrench_sensor;
-    currentWrench_sensor.force = KDL::Vector(outSensor[0], outSensor[1], outSensor[2]);
-    currentWrench_sensor.torque = KDL::Vector(outSensor[3], outSensor[4], outSensor[5]);
+    KDL::Wrench currentWrench_sensor (
+        KDL::Vector(outSensor[0], outSensor[1], outSensor[2]), // force
+        KDL::Vector(outSensor[3], outSensor[4], outSensor[5]) // torque
+    );
 
-    wrench = R_N_sensor * currentWrench_sensor;
+    wrench_N = R_N_sensor * currentWrench_sensor;
     return true;
+}
+
+bool OneFootStand::selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const
+{
+    std::vector<double> x(6, 0.0);
+    std::vector<double> q;
+
+    // ignore orientation (last 3 elements)
+    std::copy(zmp.data, zmp.data + 3, x.begin());
+
+    const auto initialIkSucceded = iCartesianControl->inv(x, q);
+    const auto step = initialIkSucceded ? -ikStep : ikStep;
+
+    static const auto maxIterations = 20;
+    auto i = 0;
+
+    do
+    {
+        zmp += ikStep * axis; // axis must be normalized
+        std::copy(zmp.data, zmp.data + 3, x.begin());
+        i++;
+    }
+    while (i < maxIterations && !(initialIkSucceded ^ iCartesianControl->inv(x, q)));
+
+    if (initialIkSucceded)
+    {
+        zmp -= ikStep * axis; // undo last failed attempt
+    }
+    else if (i >= maxIterations)
+    {
+        return false; // we never found a valid configuration in `maxIterations` attempts
+    }
+
+    return true;
+}
+
+std::vector<double> OneFootStand::computeStep(const KDL::Vector & p)
+{
+    std::vector<double> x(6, 0.0);
+
+    KDL::Vector direction = p;
+    double step = direction.Normalize();
+
+    double acceleration = std::abs(step - previousStep) / period;
+    acceleration = std::min(acceleration, maxAcceleration);
+    acceleration = std::copysign(acceleration, step - previousStep);
+
+    step = std::min(step, previousStep + acceleration * period);
+    step = std::min(step, maxSpeed);
+    step = std::max(step, 0.0); // just in case
+
+    KDL::Vector pp = direction * step;
+    std::copy(pp.data, pp.data + 3, x.begin());
+
+    previousStep = step;
+    return x;
 }
 
 void OneFootStand::run()
 {
-    KDL::Wrench wrench;
+    KDL::Wrench wrench_N; // expressed in TCP frame
 
-    if (!readSensor(wrench))
+    if (!readSensor(wrench_N))
     {
         yarp::os::PeriodicThread::askToStop();
         return;
     }
 
-    wrench -= initialOffset;
+    auto forceNorm = wrench_N.force.Norm();
 
-    auto forceNorm = wrench.force.Norm();
-    auto torqueNorm = wrench.torque.Norm();
-
-    if (forceNorm <= forceDeadband && torqueNorm <= torqueDeadband)
+    if (KDL::Equal(forceNorm, 0.0))
     {
-        if (!dryRun) iCartesianControl->twist(std::vector(6, 0.0));
+        yCWarning(OFS) << "Zero force detected, skipping this iteration";
         return;
     }
 
-    if (forceNorm > forceDeadband)
+    // shortest distance vector from TCP to ZMP axis expressed in TCP frame
+    KDL::Vector p_N_zmp = (wrench_N.force * wrench_N.torque) / (forceNorm * forceNorm);
+
+    if (!selectZmp(wrench_N.force / forceNorm, p_N_zmp))
     {
-        auto forceThreshold = (wrench.force / forceNorm) * forceDeadband;
-        wrench.force = (wrench.force - forceThreshold) * linGain;
-    }
-    else
-    {
-        wrench.force = KDL::Vector::Zero();
+        yCWarning(OFS) << "Unable to find a valid configuration for the ZMP in this iteration";
+        return;
     }
 
-    if (torqueNorm > torqueDeadband)
-    {
-        auto torqueThreshold = (wrench.torque / torqueNorm) * torqueDeadband;
-        wrench.torque = (wrench.torque - torqueThreshold) * rotGain;
-    }
-    else
-    {
-        wrench.torque = KDL::Vector::Zero();
-    }
-
-    auto v = KdlVectorConverter::wrenchToVector(wrench);
-    yCDebug(OFS) << v;
-    if (!dryRun) iCartesianControl->twist(v);
+    auto xd = computeStep(p_N_zmp);
+    yCDebug(OFS) << xd;
+    if (!dryRun) iCartesianControl->movi(xd);
 }
 
 bool OneFootStand::updateModule()
