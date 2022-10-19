@@ -318,17 +318,17 @@ std::vector<double> OneFootStand::computeStep(const KDL::Vector & p)
     std::vector<double> x(6, 0.0);
 
     KDL::Vector direction = p;
-    double step = direction.Normalize();
+    double step = direction.Normalize(); // [m/step], where it takes `period` [s] to make a step
 
-    double acceleration = std::abs(step - previousStep) / period;
-    acceleration = std::min(acceleration, maxAcceleration);
+    double acceleration = std::abs(step - previousStep); // [m/step^2]
+    acceleration = std::min(acceleration, maxAcceleration * period * period); // [m/s^2] * [s/step]^2 = [m/step^2]
     acceleration = std::copysign(acceleration, step - previousStep);
 
-    step = std::min(step, previousStep + acceleration * period);
-    step = std::min(step, maxSpeed);
+    step = std::min(step, previousStep + acceleration);
+    step = std::min(step, maxSpeed * period); // [m/s] * [s/step] = [m/step]
     step = std::max(step, 0.0); // just in case
 
-    KDL::Vector pp = direction * step;
+    KDL::Vector pp = direction * step / period;
     std::copy(pp.data, pp.data + 3, x.begin());
 
     previousStep = step;
