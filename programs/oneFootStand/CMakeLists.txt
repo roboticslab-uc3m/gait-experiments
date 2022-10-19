@@ -3,7 +3,7 @@ if(NOT TARGET ROBOTICSLAB::KdlVectorConverterLib AND (NOT DEFINED ENABLE_oneFoot
 endif()
 
 cmake_dependent_option(ENABLE_oneFootStand "Enable/disable oneFootStand program" ON
-                       TARGET ROBOTICSLAB::KdlVectorConverterLib OFF)
+                       "TARGET ROBOTICSLAB::KdlVectorConverterLib" OFF)
 
 if(ENABLE_oneFootStand)
 
