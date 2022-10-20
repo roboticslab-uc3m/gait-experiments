@@ -3,7 +3,7 @@
 /**
  * @ingroup gait-experiments-programs
  * @defgroup zmpViewer zmpViewer
- * @brief Creates an instance of roboticslab::zmpViewer.
+ * @brief Creates an instance of roboticslab::ZmpViewer.
  *
  * This app connects to a remote /zmp:o port that streams ZMP coordinates
  * relative to a TCP frame. Then, it is drawn and published as a YARP image

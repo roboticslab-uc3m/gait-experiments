@@ -3,6 +3,7 @@
 /**
  * @ingroup gait-experiments-programs
  * @defgroup squatLooped squatLooped
+ * @brief Perform a series of squats on a humanoid robot.
  *
  * <b>Building</b>
  *
