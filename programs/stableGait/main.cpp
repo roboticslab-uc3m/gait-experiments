@@ -3,6 +3,7 @@
 /**
  * @ingroup gait-experiments-programs
  * @defgroup stableGait stableGait
+ * @brief An attempt to perform gait on a humanoid robot with simple, non-dynamic stability assumptions.
  *
  * <b>Building</b>
  *

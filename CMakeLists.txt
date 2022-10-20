@@ -37,7 +37,7 @@ find_package(ROBOTICSLAB_KINEMATICS_DYNAMICS REQUIRED)
 
 # Soft dependencies.
 #find_package(GTestSources 1.8 QUIET)
-#find_package(Doxygen QUIET)
+find_package(Doxygen QUIET)
 
 # Always build YARP devices as MODULE libraries.
 set(YARP_FORCE_DYNAMIC_PLUGINS TRUE CACHE INTERNAL "Force dynamic plugins")

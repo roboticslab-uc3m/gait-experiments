@@ -3,6 +3,7 @@
 /**
  * @ingroup gait-experiments-programs
  * @defgroup squatAndBalance squatAndBalance
+ * @brief Perform squat and balancing on a humanoid robot.
  *
  * <b>Building</b>
  *
