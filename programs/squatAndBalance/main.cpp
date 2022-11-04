@@ -94,6 +94,7 @@ int main(int argc, char * argv[])
 
     std::string robotPrefix = rf.check("prefix", yarp::os::Value("/teoSim")).asString();
 
+    double x = rf.check("x", yarp::os::Value(0.0), "x offset (COG)").asFloat64();
     double y = rf.check("y", yarp::os::Value(0.0), "y offset (COG)").asFloat64();
     double z = rf.check("z", yarp::os::Value(0.0), "z offset (COG)").asFloat64();
 
@@ -171,8 +172,10 @@ int main(int argc, char * argv[])
     }
 
     std::vector<double> xd_leftLeg(x_leftLeg);
+    xd_leftLeg[0] += x;
     xd_leftLeg[1] -= y;
     xd_leftLeg[2] += z;
+
 
     yInfo() << "Current (left):" <<  x_leftLeg[0] << x_leftLeg[1] << x_leftLeg[2];
     yInfo() << "Desired (left):" << xd_leftLeg[0] << xd_leftLeg[1] << xd_leftLeg[2];
@@ -199,8 +202,10 @@ int main(int argc, char * argv[])
     }
 
     std::vector<double> xd_rightLeg(x_rightLeg);
+    xd_rightLeg[0] += x;
     xd_rightLeg[1] -= y;
     xd_rightLeg[2] += z;
+
 
     yInfo() << "Current (right):" << x_rightLeg[0] << x_rightLeg[1] << x_rightLeg[2];
     yInfo() << "Desired (right):" << xd_rightLeg[0] << xd_rightLeg[1] << xd_rightLeg[2];
