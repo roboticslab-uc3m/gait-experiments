@@ -6,10 +6,15 @@
 
 #include <algorithm> // std::copy, std::max, std::min
 
+#include <yarp/os/Bottle.h>
 #include <yarp/os/LogComponent.h>
 #include <yarp/os/LogStream.h>
 #include <yarp/os/Property.h>
 #include <yarp/os/SystemClock.h>
+
+#include <yarp/dev/IControlLimits.h>
+#include <yarp/dev/IControlMode.h>
+#include <yarp/dev/IEncoders.h>
 
 #include <kdl/utilities/utility.h> // KDL::deg2rad
 
@@ -54,6 +59,8 @@ constexpr auto DEFAULT_LOCAL_PREFIX = "/oneFootStand";
 constexpr auto DEFAULT_IK_STEP = 0.001; // [m]
 constexpr auto DEFAULT_MAX_SPEED = 0.01; // [m/s]
 constexpr auto DEFAULT_MAX_ACCELERATION = 0.1; // [m/s^2]
+
+constexpr auto REF_FRAME = ICartesianSolver::TCP_FRAME;
 
 bool OneFootStand::configure(yarp::os::ResourceFinder & rf)
 {
@@ -172,68 +179,119 @@ bool OneFootStand::configure(yarp::os::ResourceFinder & rf)
 
     int retry = 0;
 
-    while (sensor->getSixAxisForceTorqueSensorStatus(sensorIndex) != yarp::dev::MAS_OK && retry++ < 10)
+    while (sensor->getSixAxisForceTorqueSensorStatus(sensorIndex) != yarp::dev::MAS_OK)
     {
-        yCDebug(OFS) << "Waiting for sensor to be ready... retry" << retry;
+        if (++retry == 10)
+        {
+            yCError(OFS) << "Failed to get first sensor read";
+            return false;
+        }
+
         yarp::os::SystemClock::delaySystem(0.1);
     }
 
-    if (retry == 10)
+    // ----- robot device -----
+
+    if (!rf.check("robotRemote", "remote robot port to connect to"))
     {
-        yCError(OFS) << "Failed to get first read, max number of retries exceeded";
+        yCError(OFS) << "Missing parameter: robotRemote";
         return false;
     }
 
-    // ----- cartesian device -----
+    auto robotRemote = rf.find("robotRemote").asString();
 
-    if (!rf.check("cartesianRemote", "remote cartesian port to connect to"))
-    {
-        yCError(OFS) << "Missing parameter: cartesianRemote";
-        return false;
-    }
-
-    auto cartesianRemote = rf.find("cartesianRemote").asString();
-
-    yarp::os::Property cartesianOptions {
-        {"device", yarp::os::Value("CartesianControlClient")},
-        {"cartesianRemote", yarp::os::Value(cartesianRemote)},
-        {"cartesianLocal", yarp::os::Value(localPrefix + cartesianRemote)}
+    yarp::os::Property robotOptions {
+        {"device", yarp::os::Value("remote_controlboard")},
+        {"remote", yarp::os::Value(robotRemote)},
+        {"local", yarp::os::Value(localPrefix + robotRemote)}
     };
 
-    if (!cartesianDevice.open(cartesianOptions))
+    if (!robotDevice.open(robotOptions))
     {
-        yCError(OFS) << "Failed to open cartesian device";
+        yCError(OFS) << "Failed to open robot device";
         return false;
     }
 
-    if (!cartesianDevice.view(iCartesianControl))
+    yarp::dev::IControlLimits * limits;
+    yarp::dev::IControlMode * mode;
+    yarp::dev::IEncoders * enc;
+
+    if (!robotDevice.view(limits) || !robotDevice.view(mode) || !robotDevice.view(enc) || !robotDevice.view(posd))
     {
-        yCError(OFS) << "Failed to view cartesian control interface";
+        yCError(OFS) << "Failed to view robot control interfaces";
         return false;
     }
 
-    if (!dryRun)
+    int numJoints;
+    enc->getAxes(&numJoints);
+    previousJointPose.resize(numJoints);
+
+    retry = 0;
+
+    while (!enc->getEncoders(previousJointPose.data()))
     {
-        std::map<int, double> params;
-
-        if (!iCartesianControl->getParameters(params))
+        if (++retry == 10)
         {
-            yCError(OFS) << "Unable to retrieve cartesian configuration parameters";
+            yCError(OFS) << "Failed to get initial joint pose";
             return false;
         }
 
-        bool usingStreamingPreset = params.find(VOCAB_CC_CONFIG_STREAMING_CMD) != params.end();
-
-        if (usingStreamingPreset && !iCartesianControl->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
-        {
-            yCWarning(OFS) << "Unable to preset streaming command";
-            return false;
-        }
+        yarp::os::SystemClock::delaySystem(0.1);
     }
 
-    if (!iCartesianControl->setParameter(VOCAB_CC_CONFIG_FRAME, ICartesianSolver::TCP_FRAME))
+    yCInfo(OFS) << "Initial joint pose:" << previousJointPose;
+
+    yarp::os::Bottle bMin, bMax;
+
+    for (int joint = 0; joint < numJoints; joint++)
     {
-        yCWarning(OFS) << "Unable to set TCP frame";
+        double qMin, qMax;
+
+        if (!limits->getLimits(joint, &qMin, &qMax))
+        {
+            yCError(OFS) << "Unable to retrieve position limits for joint" << joint;
+            return false;
+        }
+
+        bMin.addFloat64(qMin);
+        bMax.addFloat64(qMax);
+    }
+
+    yCInfo(OFS) << "Joint position limits:" << bMin.toString() << bMax.toString();
+
+    if (!mode->setControlModes(std::vector(numJoints, VOCAB_CM_POSITION_DIRECT).data()))
+    {
+        yCError(OFS) << "Failed to set posd control mode";
+        return false;
+    }
+
+    // ----- solver device -----
+
+    if (!rf.check("kinematics", "description file for kinematics"))
+    {
+        yCError(OFS) << "Missing parameter: kinematics";
+        return false;
+    }
+
+    yarp::os::Property solverOptions {
+        {"device", yarp::os::Value("KdlSolver")},
+        {"kinematics", rf.find("kinematics")},
+        {"ikPos", yarp::os::Value("st")},
+        {"invKinStrategy", yarp::os::Value("humanoidGait")}
+    };
+
+    solverOptions.put("mins", yarp::os::Value::makeList(bMin.toString().c_str()));
+    solverOptions.put("maxs", yarp::os::Value::makeList(bMax.toString().c_str()));
+
+    if (!solverDevice.open(solverOptions))
+    {
+        yCError(OFS) << "Failed to open solver device";
+        return false;
+    }
+
+    if (!solverDevice.view(solver))
+    {
+        yCError(OFS) << "Failed to view solver interface";
         return false;
     }
 
@@ -272,12 +330,12 @@ bool OneFootStand::readSensor(KDL::Wrench & wrench_N) const
 bool OneFootStand::selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const
 {
     std::vector<double> x(6, 0.0);
-    std::vector<double> q;
+    std::vector<double> q = previousJointPose;
 
     // ignore orientation (last 3 elements)
     std::copy(zmp.data, zmp.data + 3, x.begin());
 
-    const auto initialIkSucceded = iCartesianControl->inv(x, q);
+    const auto initialIkSucceded = solver->invKin(x, q, q, REF_FRAME);
     const auto step = initialIkSucceded ? -ikStep : ikStep;
 
     static const auto maxIterations = 20;
@@ -289,7 +347,7 @@ bool OneFootStand::selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const
         std::copy(zmp.data, zmp.data + 3, x.begin());
         i++;
     }
-    while (i < maxIterations && !(initialIkSucceded ^ iCartesianControl->inv(x, q)));
+    while (i < maxIterations && !(initialIkSucceded ^ solver->invKin(x, q, q, REF_FRAME)));
 
     if (initialIkSucceded)
     {
@@ -369,7 +427,8 @@ void OneFootStand::run()
 
     auto xd = computeStep(p_N_zmp);
     yCDebug(OFS) << xd;
-    if (!dryRun) iCartesianControl->movi(xd);
+    solver->invKin(xd, previousJointPose, previousJointPose, REF_FRAME); // assume this is reachable
+    if (!dryRun) posd->setPositions(previousJointPose.data());
 }
 
 bool OneFootStand::updateModule()
@@ -380,7 +439,8 @@ bool OneFootStand::updateModule()
 bool OneFootStand::interruptModule()
 {
     yarp::os::PeriodicThread::stop();
-    return dryRun || iCartesianControl->stopControl();
+    zmpPort.interrupt();
+    return true;
 }
 
 double OneFootStand::getPeriod()
@@ -390,9 +450,9 @@ double OneFootStand::getPeriod()
 
 bool OneFootStand::close()
 {
-    zmpPort.interrupt();
     zmpPort.close();
-    cartesianDevice.close();
+    solverDevice.close();
+    robotDevice.close();
     sensorDevice.close();
     return true;
 }

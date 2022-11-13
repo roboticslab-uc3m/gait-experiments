@@ -10,12 +10,13 @@
 #include <yarp/os/PeriodicThread.h>
 #include <yarp/os/RFModule.h>
 
+#include <yarp/dev/IPositionDirect.h>
 #include <yarp/dev/MultipleAnalogSensorsInterfaces.h>
 #include <yarp/dev/PolyDriver.h>
 
 #include <kdl/frames.hpp>
 
-#include <ICartesianControl.h>
+#include <ICartesianSolver.h>
 
 namespace roboticslab
 {
@@ -51,8 +52,11 @@ private:
     void publishProjection(const KDL::Vector & p_N_zmp);
     std::vector<double> computeStep(const KDL::Vector & p);
 
-    yarp::dev::PolyDriver cartesianDevice;
-    roboticslab::ICartesianControl * iCartesianControl;
+    yarp::dev::PolyDriver robotDevice;
+    yarp::dev::IPositionDirect * posd;
+
+    yarp::dev::PolyDriver solverDevice;
+    roboticslab::ICartesianSolver * solver;
 
     int sensorIndex;
     yarp::dev::PolyDriver sensorDevice;
@@ -69,6 +73,7 @@ private:
     double maxAcceleration;
 
     double previousStep {0.0};
+    std::vector<double> previousJointPose;
 
     yarp::os::BufferedPort<yarp::os::Bottle> zmpPort;
 };
