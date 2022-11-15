@@ -277,7 +277,8 @@ bool OneFootStand::configure(yarp::os::ResourceFinder & rf)
         {"device", yarp::os::Value("KdlSolver")},
         {"kinematics", rf.find("kinematics")},
         {"ikPos", yarp::os::Value("st")},
-        {"invKinStrategy", yarp::os::Value("humanoidGait")}
+        {"invKinStrategy", yarp::os::Value("humanoidGait")},
+        {"quiet", yarp::os::Value::getNullValue()}
     };
 
     solverOptions.put("mins", yarp::os::Value::makeList(bMin.toString().c_str()));
