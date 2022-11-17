@@ -366,9 +366,13 @@ void OneFootStand::publishProjection(const KDL::Vector & p_N_zmp)
 {
     KDL::Vector p_sole_zmp = R_N_sole.Inverse() * p_N_zmp;
 
-    // R_N_sole should make Z axis orthogonal to the sole plane, thus we only need X and Y
-    zmpPort.prepare() = {yarp::os::Value(p_sole_zmp.x()), yarp::os::Value(p_sole_zmp.y())};
+    // proyection of the ZMP on the sole plane (XY)
+    KDL::Vector p_sole_zmp_xy = KDL::Vector(p_sole_zmp.x(), p_sole_zmp.y(), 0.0);
 
+    // intersection of the ZMP line with the sole plane
+    KDL::Vector p_sole_zmp_int = p_sole_zmp_xy * (p_sole_zmp.Norm() / p_sole_zmp_xy.Norm());
+
+    zmpPort.prepare() = {yarp::os::Value(p_sole_zmp_int.x()), yarp::os::Value(p_sole_zmp_int.y())};
     zmpPort.write();
 }
 
@@ -415,15 +419,21 @@ void OneFootStand::run()
     // shortest distance vector from TCP to ZMP axis expressed in TCP frame
     KDL::Vector p_N_zmp = (wrench_N.force * wrench_N.torque) / (forceNorm * forceNorm);
 
-    if (!selectZmp(wrench_N.force / forceNorm, p_N_zmp))
+    if (KDL::Equal(p_N_zmp.Norm(), 0.0))
     {
-        yCWarning(OFS) << "Unable to find a valid configuration for the ZMP in this iteration";
+        yCDebug(OFS) << "Already on ZMP, skipping this iteration";
         return;
     }
 
     if (zmpPort.getOutputCount() > 0)
     {
         publishProjection(p_N_zmp);
+    }
+
+    if (!selectZmp(wrench_N.force / forceNorm, p_N_zmp))
+    {
+        yCWarning(OFS) << "Unable to find a valid configuration for the ZMP in this iteration";
+        return;
     }
 
     auto xd = computeStep(p_N_zmp);
