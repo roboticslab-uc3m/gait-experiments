@@ -320,8 +320,8 @@ bool OneFootStand::readSensor(KDL::Wrench & wrench_N) const
     }
 
     KDL::Wrench currentWrench_sensor (
-        KDL::Vector(outSensor[0], outSensor[1], outSensor[2]), // force
-        KDL::Vector(outSensor[3], outSensor[4], outSensor[5]) // torque
+        {outSensor[0], outSensor[1], outSensor[2]}, // force
+        {outSensor[3], outSensor[4], outSensor[5]} // torque
     );
 
     wrench_N = R_N_sensor * currentWrench_sensor;
@@ -367,7 +367,7 @@ void OneFootStand::publishProjection(const KDL::Vector & p_N_zmp)
     KDL::Vector p_sole_zmp = R_N_sole.Inverse() * p_N_zmp;
 
     // proyection of the ZMP on the sole plane (XY)
-    KDL::Vector p_sole_zmp_xy = KDL::Vector(p_sole_zmp.x(), p_sole_zmp.y(), 0.0);
+    KDL::Vector p_sole_zmp_xy = {p_sole_zmp.x(), p_sole_zmp.y(), 0.0};
 
     // intersection of the ZMP line with the sole plane
     KDL::Vector p_sole_zmp_int = p_sole_zmp_xy * (p_sole_zmp.Norm() / p_sole_zmp_xy.Norm());
