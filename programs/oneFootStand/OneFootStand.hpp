@@ -47,10 +47,10 @@ protected:
     void run() override;
 
 private:
-    bool readSensor(KDL::Wrench & wrench_N) const;
-    bool selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const;
+    bool readSensor(KDL::Wrench & wrench_N);
     void publishProjection(const KDL::Vector & p_N_zmp);
-    std::vector<double> computeStep(const KDL::Vector & p);
+    double computeStepDistance(const KDL::Vector & p_N_zmp);
+    bool computeStepDirection(const KDL::Vector & p_N_zmp, double distance, KDL::Vector & dir);
 
     yarp::dev::PolyDriver robotDevice;
     yarp::dev::IPositionDirect * posd;

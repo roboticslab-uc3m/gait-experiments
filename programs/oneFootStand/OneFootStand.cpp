@@ -2,7 +2,7 @@
 
 #include "OneFootStand.hpp"
 
-#include <cmath> // std::abs, std::copysign
+#include <cmath> // std::abs, std::acos, std::copysign
 
 #include <algorithm> // std::copy, std::max, std::min
 
@@ -309,7 +309,7 @@ bool OneFootStand::configure(yarp::os::ResourceFinder & rf)
     return yarp::os::PeriodicThread::setPeriod(period) && yarp::os::PeriodicThread::start();
 }
 
-bool OneFootStand::readSensor(KDL::Wrench & wrench_N) const
+bool OneFootStand::readSensor(KDL::Wrench & wrench_N)
 {
     yarp::sig::Vector outSensor;
 
@@ -328,40 +328,6 @@ bool OneFootStand::readSensor(KDL::Wrench & wrench_N) const
     return true;
 }
 
-bool OneFootStand::selectZmp(const KDL::Vector & axis, KDL::Vector & zmp) const
-{
-    std::vector<double> x(6, 0.0);
-    std::vector<double> q = previousJointPose;
-
-    // ignore orientation (last 3 elements)
-    std::copy(zmp.data, zmp.data + 3, x.begin());
-
-    const auto initialIkSucceded = solver->invKin(x, q, q, REF_FRAME);
-    const auto step = initialIkSucceded ? -ikStep : ikStep;
-
-    static const auto maxIterations = 20;
-    auto i = 0;
-
-    do
-    {
-        zmp += ikStep * axis; // axis must be normalized
-        std::copy(zmp.data, zmp.data + 3, x.begin());
-        i++;
-    }
-    while (i < maxIterations && !(initialIkSucceded ^ solver->invKin(x, q, q, REF_FRAME)));
-
-    if (initialIkSucceded)
-    {
-        zmp -= ikStep * axis; // undo last failed attempt
-    }
-    else if (i >= maxIterations)
-    {
-        return false; // we never found a valid configuration in `maxIterations` attempts
-    }
-
-    return true;
-}
-
 void OneFootStand::publishProjection(const KDL::Vector & p_N_zmp)
 {
     KDL::Vector p_sole_zmp = R_N_sole.Inverse() * p_N_zmp;
@@ -376,12 +342,9 @@ void OneFootStand::publishProjection(const KDL::Vector & p_N_zmp)
     zmpPort.write();
 }
 
-std::vector<double> OneFootStand::computeStep(const KDL::Vector & p)
+double OneFootStand::computeStepDistance(const KDL::Vector & p)
 {
-    std::vector<double> x(6, 0.0);
-
-    KDL::Vector direction = p;
-    double step = direction.Normalize(); // [m/step], where it takes `period` [s] on each step
+    double step = p.Norm(); // [m/step], where it takes `period` [s] on each step
 
     double acceleration = std::abs(step - previousStep); // [m/step^2]
     acceleration = std::min(acceleration, maxAcceleration * period * period); // [m/s^2] * [s/step]^2 = [m/step^2]
@@ -391,11 +354,45 @@ std::vector<double> OneFootStand::computeStep(const KDL::Vector & p)
     step = std::min(step, maxSpeed * period); // [m/s] * [s/step] = [m/step]
     step = std::max(step, 0.0); // just in case
 
-    KDL::Vector pp = direction * step;
-    std::copy(pp.data, pp.data + 3, x.begin());
+    return step;
+}
 
-    previousStep = step;
-    return x;
+bool OneFootStand::computeStepDirection(const KDL::Vector & p_N_zmp, double distance, KDL::Vector & dir)
+{
+    double norm = p_N_zmp.Norm();
+    double angle = std::acos(distance / norm);
+    KDL::Vector axis = p_N_zmp / norm;
+
+    // std::vector<double> x(6, 0.0);
+    // std::vector<double> q = previousJointPose;
+
+    // // ignore orientation (last 3 elements)
+    // std::copy(zmp.data, zmp.data + 3, x.begin());
+
+    // const auto initialIkSucceded = solver->invKin(x, q, q, REF_FRAME);
+    // const auto step = initialIkSucceded ? -ikStep : ikStep;
+
+    // static const auto maxIterations = 20;
+    // auto i = 0;
+
+    // do
+    // {
+    //     zmp += ikStep * axis; // axis must be normalized
+    //     std::copy(zmp.data, zmp.data + 3, x.begin());
+    //     i++;
+    // }
+    // while (i < maxIterations && !(initialIkSucceded ^ solver->invKin(x, q, q, REF_FRAME)));
+
+    // if (initialIkSucceded)
+    // {
+    //     zmp -= ikStep * axis; // undo last failed attempt
+    // }
+    // else if (i >= maxIterations)
+    // {
+    //     return false; // we never found a valid configuration in `maxIterations` attempts
+    // }
+
+    return true;
 }
 
 void OneFootStand::run()
@@ -419,24 +416,29 @@ void OneFootStand::run()
     // shortest distance vector from TCP to ZMP axis expressed in TCP frame
     KDL::Vector p_N_zmp = (wrench_N.force * wrench_N.torque) / (forceNorm * forceNorm);
 
+    if (zmpPort.getOutputCount() > 0)
+    {
+        publishProjection(p_N_zmp);
+    }
+
     if (KDL::Equal(p_N_zmp.Norm(), 0.0))
     {
         yCDebug(OFS) << "Already on ZMP, skipping this iteration";
         return;
     }
 
-    if (zmpPort.getOutputCount() > 0)
-    {
-        publishProjection(p_N_zmp);
-    }
+    double step = computeStepDistance(p_N_zmp);
 
-    if (!selectZmp(wrench_N.force / forceNorm, p_N_zmp))
+    KDL::Vector dir;
+
+    if (!computeStepDirection(p_N_zmp, step, dir))
     {
         yCWarning(OFS) << "Unable to find a valid configuration for the ZMP in this iteration";
         return;
     }
 
-    auto xd = computeStep(p_N_zmp);
+    // TODO
+    std::vector<double> xd;
     yCDebug(OFS) << xd;
     solver->invKin(xd, previousJointPose, previousJointPose, REF_FRAME); // assume this is reachable
     if (!dryRun) posd->setPositions(previousJointPose.data());
