@@ -2,19 +2,22 @@
 
 #include "TargetBuilder.hpp"
 
-#include <cmath>
+#include <algorithm> // std::max
 
 #include <yarp/os/LogStream.h>
 #include <yarp/os/Time.h>
 
 #include <KdlVectorConverter.hpp>
 
-TargetBuilder::TargetBuilder(rl::ICartesianControl * _iCartLeft, rl::ICartesianControl * _iCartRight)
-    : iCartLeft(_iCartLeft),
-      iCartRight(_iCartRight),
-      tCom(0),
-      tLeft(0),
-      tRight(0),
+TargetBuilder::TargetBuilder(rl::ICartesianSolver * _solverLeft, rl::ICartesianSolver * _solverRight,
+                             const std::vector<double> & _initialJointLeft, const std::vector<double> & _initialJointRight)
+    : solverLeft(_solverLeft),
+      solverRight(_solverRight),
+      initialJointLeft(_initialJointLeft),
+      initialJointRight(_initialJointRight),
+      tCom(nullptr),
+      tLeft(nullptr),
+      tRight(nullptr),
       maxTime(0.0)
 {}
 
@@ -51,21 +54,22 @@ void TargetBuilder::build(double period, Targets & vLeft, Targets & vRight)
     }
 }
 
-bool TargetBuilder::validate(Targets & vLeft, Targets & vRight)
+bool TargetBuilder::validate(const Targets & vLeft, const Targets & vRight)
 {
-    std::vector<double> q;
+    std::vector<double> qLeft = initialJointLeft;
+    std::vector<double> qRight = initialJointRight;
 
     for (int i = 0; i < vLeft.size(); i++)
     {
-        if (!iCartLeft->inv(vLeft[i], q))
+        if (!solverLeft->invKin(vLeft[i], qLeft, qLeft))
         {
-            yWarning() << "IK failing at left leg:" << vLeft[i][0] << vLeft[i][1] << vLeft[i][2] << vLeft[i][3] << vLeft[i][4] << vLeft[i][5];
+            yWarning() << "IK failing at left leg:" << vLeft[i];
             return false;
         }
 
-        if (!iCartRight->inv(vRight[i], q))
+        if (!solverRight->invKin(vRight[i], qRight, qRight))
         {
-            yWarning() << "IK failing at right leg:" << vRight[i][0] << vRight[i][1] << vRight[i][2] << vRight[i][3] << vRight[i][4] << vRight[i][5];
+            yWarning() << "IK failing at right leg:" << vRight[i];
             return false;
         }
     }

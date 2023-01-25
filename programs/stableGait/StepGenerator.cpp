@@ -2,7 +2,7 @@
 
 #include "StepGenerator.hpp"
 
-#include <cmath>
+#include <algorithm> // std::min
 
 StepGenerator::StepGenerator(FootSpec _footSpec, const KDL::Frame & _initialPose)
     : footSpec(_footSpec),

@@ -7,7 +7,7 @@
 
 #include <kdl/trajectory.hpp>
 
-#include <ICartesianControl.h>
+#include <ICartesianSolver.h>
 
 namespace rl = roboticslab;
 
@@ -15,17 +15,25 @@ class TargetBuilder
 {
 public:
     using Targets = std::vector<std::vector<double>>;
-    TargetBuilder(rl::ICartesianControl * iCartLeft, rl::ICartesianControl * iCartRight);
+
+    TargetBuilder(rl::ICartesianSolver * solverLeft, rl::ICartesianSolver * solverRight,
+                  const std::vector<double> & initialJointLeft, const std::vector<double> & initialJointRight);
+
     void configure(KDL::Trajectory * tCom, KDL::Trajectory * tLeft, KDL::Trajectory * tRight);
     void build(double period, Targets & vLeft, Targets & vRight);
-    bool validate(Targets & vLeft, Targets & vRight);
+    bool validate(const Targets & vLeft, const Targets & vRight);
 
 private:
-    rl::ICartesianControl * iCartLeft;
-    rl::ICartesianControl * iCartRight;
+    rl::ICartesianSolver * solverLeft;
+    rl::ICartesianSolver * solverRight;
+
+    const std::vector<double> & initialJointLeft;
+    const std::vector<double> & initialJointRight;
+
     KDL::Trajectory * tCom;
     KDL::Trajectory * tLeft;
     KDL::Trajectory * tRight;
+
     double maxTime;
 };
 

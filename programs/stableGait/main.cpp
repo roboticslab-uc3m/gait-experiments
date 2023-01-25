@@ -23,9 +23,7 @@ make -j$(nproc)
  *
 \verbatim
 [on terminal 2] teoSim
-[on terminal 3] yarpdev --device BasicCartesianControl --name /teoSim/leftLeg/CartesianControl --kinematics teo-leftLeg.ini --local /BasicCartesianControl/teoSim/leftLeg --remote /teoSim/leftLeg --ik st --invKinStrategy humanoidGait
-[on terminal 4] yarpdev --device BasicCartesianControl --name /teoSim/rightLeg/CartesianControl --kinematics teo-rightLeg.ini --local /BasicCartesianControl/teoSim/rightLeg --remote /teoSim/rightLeg --ik st --invKinStrategy humanoidGait
-[on terminal 5] stableGait --distance 1.0 --dry
+[on terminal 3] stableGait --distance 1.0 --dry
 \endverbatim
  */
 
@@ -35,20 +33,25 @@ make -j$(nproc)
 #include <string>
 #include <vector>
 
+#include <yarp/os/Bottle.h>
 #include <yarp/os/LogStream.h>
 #include <yarp/os/Network.h>
 #include <yarp/os/Property.h>
 #include <yarp/os/ResourceFinder.h>
-#include <yarp/os/Time.h>
+#include <yarp/os/SystemClock.h>
 #include <yarp/os/Timer.h>
 
+#include <yarp/dev/IControlLimits.h>
+#include <yarp/dev/IControlMode.h>
+#include <yarp/dev/IEncoders.h>
+#include <yarp/dev/IPositionDirect.h>
 #include <yarp/dev/PolyDriver.h>
 
 #include <kdl/frames.hpp>
 #include <kdl/trajectory_composite.hpp>
 #include <kdl/utilities/error.h>
 
-#include <ICartesianControl.h>
+#include <ICartesianSolver.h>
 #include <KdlVectorConverter.hpp>
 
 #include "GaitSpecs.hpp"
@@ -91,6 +94,8 @@ int main(int argc, char * argv[])
     yDebug() << rf.toString();
 
     std::string robotPrefix = rf.check("prefix", yarp::os::Value("/teoSim")).asString();
+    std::string kinematicsLeftLeg = rf.check("kinematicsLeftLeg", yarp::os::Value("teo-leftLeg.ini")).asString();
+    std::string kinematicsRightLeg = rf.check("kinematicsRightLeg", yarp::os::Value("teo-rightLeg.ini")).asString();
 
     double distance = rf.check("distance", yarp::os::Value(1.0), "distance to travel [m]").asFloat64();
     double trajVel = rf.check("vel", yarp::os::Value(DEFAULT_TRAJ_VEL), "velocity [m/s]").asFloat64();
@@ -180,78 +185,230 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    // Create devices (left leg).
+    // Create robot device (left leg).
 
     yarp::os::Property leftLegDeviceOptions {
-        {"device", yarp::os::Value("CartesianControlClient")},
-        {"cartesianRemote", yarp::os::Value(robotPrefix + "/leftLeg/CartesianControl")},
-        {"cartesianLocal", yarp::os::Value("/stableGait/leftLeg")}
+        {"device", yarp::os::Value("remote_controlboard")},
+        {"remote", yarp::os::Value(robotPrefix + "/leftLeg")},
+        {"local", yarp::os::Value("/stableGait/leftLeg")}
     };
 
     yarp::dev::PolyDriver leftLegDevice(leftLegDeviceOptions);
 
     if (!leftLegDevice.isValid())
     {
-        yError() << "Cartesian device (left leg) not available";
+        yError() << "Robot device (left leg) not available";
         return 1;
     }
 
-    rl::ICartesianControl * iCartesianControlLeftLeg;
+    yarp::dev::IControlLimits * limitsLeftLeg;
+    yarp::dev::IControlMode * modeLeftLeg;
+    yarp::dev::IEncoders * encLeftLeg;
+    yarp::dev::IPositionDirect * posdLeftLeg;
 
-    if (!leftLegDevice.view(iCartesianControlLeftLeg))
+    if (!leftLegDevice.view(limitsLeftLeg) || !leftLegDevice.view(modeLeftLeg)
+        || !leftLegDevice.view(encLeftLeg) || !leftLegDevice.view(posdLeftLeg))
     {
-        yError() << "Cannot view iCartesianControlLeftLeg";
+        yError() << "Cannot view interfaces (left leg)";
         return 1;
     }
 
-    if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
+    int numJointsLeftLeg;
+    encLeftLeg->getAxes(&numJointsLeftLeg);
+
+    std::vector<double> qLeftInitial(numJointsLeftLeg);
+    int retry = 0;
+
+    while (!encLeftLeg->getEncoders(qLeftInitial.data()))
     {
-        yError() << "Cannot preset streaming command (left leg)";
+        if (++retry == 10)
+        {
+            yError() << "Failed to get initial joint pose (left leg)";
+            return 1;
+        }
+
+        yarp::os::SystemClock::delaySystem(0.1);
+    }
+
+    yInfo() << "Initial joint pose (left leg):" << qLeftInitial;
+
+    yarp::os::Bottle bMinLeftLeg;
+    yarp::os::Bottle bMaxLeftLeg;
+
+    for (int joint = 0; joint < numJointsLeftLeg; joint++)
+    {
+        double qMin, qMax;
+
+        if (!limitsLeftLeg->getLimits(joint, &qMin, &qMax))
+        {
+            yError() << "Unable to retrieve position limits for joint" << joint << "(left leg)";
+            return 1;
+        }
+
+        bMinLeftLeg.addFloat64(qMin);
+        bMaxLeftLeg.addFloat64(qMax);
+    }
+
+    yInfo() << "Joint position limits (left leg):" << bMinLeftLeg.toString() << bMaxLeftLeg.toString();
+
+    if (!modeLeftLeg->setControlModes(std::vector(numJointsLeftLeg, VOCAB_CM_POSITION_DIRECT).data()))
+    {
+        yError() << "Failed to set posd control mode (left leg)";
         return 1;
     }
 
-    // Create devices (right leg).
+    // Create robot device (right leg).
 
     yarp::os::Property rightLegDeviceOptions {
-        {"device", yarp::os::Value("CartesianControlClient")},
-        {"cartesianRemote", yarp::os::Value(robotPrefix + "/rightLeg/CartesianControl")},
-        {"cartesianLocal", yarp::os::Value("/stableGait/rightLeg")}
+        {"device", yarp::os::Value("remote_controlboard")},
+        {"remote", yarp::os::Value(robotPrefix + "/rightLeg")},
+        {"local", yarp::os::Value("/stableGait/rightLeg")}
     };
 
     yarp::dev::PolyDriver rightLegDevice(rightLegDeviceOptions);
 
     if (!rightLegDevice.isValid())
     {
-        yError() << "Cartesian device (right leg) not available";
+        yError() << "Robot device (right leg) not available";
         return 1;
     }
 
-    rl::ICartesianControl * iCartesianControlRightLeg;
+    yarp::dev::IControlLimits * limitsRightLeg;
+    yarp::dev::IControlMode * modeRightLeg;
+    yarp::dev::IEncoders * encRightLeg;
+    yarp::dev::IPositionDirect * posdRightLeg;
 
-    if (!rightLegDevice.view(iCartesianControlRightLeg))
+    if (!rightLegDevice.view(limitsRightLeg) || !rightLegDevice.view(modeRightLeg)
+        || !rightLegDevice.view(encRightLeg) || !rightLegDevice.view(posdRightLeg))
     {
-        yError() << "Cannot view iCartesianControlRightLeg";
+        yError() << "Cannot view interfaces (right leg)";
         return 1;
     }
 
-    if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
+    int numJointsRightLeg;
+    encRightLeg->getAxes(&numJointsRightLeg);
+
+    std::vector<double> qRightInitial(numJointsRightLeg);
+    retry = 0;
+
+    while (!encRightLeg->getEncoders(qRightInitial.data()))
     {
-        yError() << "Cannot preset streaming command (right leg)";
+        if (++retry == 10)
+        {
+            yError() << "Failed to get initial joint pose (right leg)";
+            return 1;
+        }
+
+        yarp::os::SystemClock::delaySystem(0.1);
+    }
+
+    yInfo() << "Initial joint pose (right leg):" << qRightInitial;
+
+    yarp::os::Bottle bMinRightLeg;
+    yarp::os::Bottle bMaxRightLeg;
+
+    for (int joint = 0; joint < numJointsRightLeg; joint++)
+    {
+        double qMin, qMax;
+
+        if (!limitsRightLeg->getLimits(joint, &qMin, &qMax))
+        {
+            yError() << "Unable to retrieve position limits for joint" << joint << "(right leg)";
+            return 1;
+        }
+
+        bMinRightLeg.addFloat64(qMin);
+        bMaxRightLeg.addFloat64(qMax);
+    }
+
+    yInfo() << "Joint position limits (right leg):" << bMinRightLeg.toString() << bMaxRightLeg.toString();
+
+    if (!modeRightLeg->setControlModes(std::vector(numJointsRightLeg, VOCAB_CM_POSITION_DIRECT).data()))
+    {
+        yError() << "Failed to set posd control mode (right leg)";
+        return 1;
+    }
+
+    // Create solver device (left leg).
+
+    yarp::os::Property leftLegSolverOptions {
+        {"device", yarp::os::Value("KdlSolver")},
+        {"kinematics", yarp::os::Value(kinematicsLeftLeg)},
+        {"ikPos", yarp::os::Value("st")},
+        {"invKinStrategy", yarp::os::Value("humanoidGait")},
+        {"quiet", yarp::os::Value::getNullValue()}
+    };
+
+    leftLegSolverOptions.put("mins", yarp::os::Value::makeList(bMinLeftLeg.toString().c_str()));
+    leftLegSolverOptions.put("maxs", yarp::os::Value::makeList(bMaxLeftLeg.toString().c_str()));
+
+    yarp::dev::PolyDriver leftLegSolverDevice(leftLegSolverOptions);
+
+    if (!leftLegSolverDevice.isValid())
+    {
+        yError() << "Solver device (left leg) not available";
+        return 1;
+    }
+
+    rl::ICartesianSolver * iCartesianSolverLeftLeg;
+
+    if (!leftLegSolverDevice.view(iCartesianSolverLeftLeg))
+    {
+        yError() << "Cannot view solver interface (left leg)";
+        return 1;
+    }
+
+    // Create solver device (right leg).
+
+    yarp::os::Property rightLegSolverOptions {
+        {"device", yarp::os::Value("KdlSolver")},
+        {"kinematics", yarp::os::Value(kinematicsRightLeg)},
+        {"ikPos", yarp::os::Value("st")},
+        {"invKinStrategy", yarp::os::Value("humanoidGait")},
+        {"quiet", yarp::os::Value::getNullValue()}
+    };
+
+    rightLegSolverOptions.put("mins", yarp::os::Value::makeList(bMinRightLeg.toString().c_str()));
+    rightLegSolverOptions.put("maxs", yarp::os::Value::makeList(bMaxRightLeg.toString().c_str()));
+
+    yarp::dev::PolyDriver rightLegSolverDevice(rightLegSolverOptions);
+
+    if (!rightLegSolverDevice.isValid())
+    {
+        yError() << "Solver device (right leg) not available";
+        return 1;
+    }
+
+    rl::ICartesianSolver * iCartesianSolverRightLeg;
+
+    if (!rightLegSolverDevice.view(iCartesianSolverRightLeg))
+    {
+        yError() << "Cannot view solver interface (right leg)";
         return 1;
     }
 
     // Initialize specs and components.
 
-    std::vector<double> x_leftInitial;
+    std::vector<double> xLeftInitial;
 
-    if (!iCartesianControlLeftLeg->stat(x_leftInitial))
+    if (!iCartesianSolverLeftLeg->fwdKin(qLeftInitial, xLeftInitial))
     {
         yError() << "Cannot stat left leg";
         return 1;
     }
 
-    x_leftInitial[2] += KDL::epsilon; // initial pose is hard to attain
-    KDL::Frame H_leftInitial = rl::KdlVectorConverter::vectorToFrame(x_leftInitial);
+    std::vector<double> xRightInitial;
+
+    if (!iCartesianSolverRightLeg->fwdKin(qRightInitial, xRightInitial))
+    {
+        yError() << "Cannot stat right leg";
+        return 1;
+    }
+
+    xLeftInitial[2] += KDL::epsilon; // initial pose is hard to attain
+    xRightInitial[2] += KDL::epsilon; // initial pose is hard to attain
+
+    KDL::Frame H_leftInitial = rl::KdlVectorConverter::vectorToFrame(xLeftInitial);
 
     FootSpec footSpec;
     footSpec.length = footLength;
@@ -264,13 +421,17 @@ int main(int argc, char * argv[])
     gaitSpec.sep = gaitSep;
     gaitSpec.hop = gaitHop;
 
-    LimitChecker limitChecker(footSpec, tolerance, iCartesianControlLeftLeg, iCartesianControlRightLeg);
+    LimitChecker limitChecker(footSpec, tolerance,
+                              iCartesianSolverLeftLeg, iCartesianSolverRightLeg,
+                              qLeftInitial, qRightInitial,
+                              xLeftInitial, xRightInitial);
+
     limitChecker.estimateParameters(gaitSpec);
     limitChecker.setReference(gaitSpec);
 
     StepGenerator stepGenerator(footSpec, H_leftInitial);
     TrajectoryGenerator trajectoryGenerator(footSpec, distance, trajVel, trajAcc);
-    TargetBuilder targetBuilder(iCartesianControlLeftLeg, iCartesianControlRightLeg);
+    TargetBuilder targetBuilder(iCartesianSolverLeftLeg, iCartesianSolverRightLeg, qLeftInitial, qRightInitial);
 
     TargetBuilder::Targets pointsLeft, pointsRight;
 
@@ -371,10 +532,16 @@ int main(int argc, char * argv[])
     {
         yarp::os::TimerSettings timerSettings(period, maxDuration / period, maxDuration);
 
+        std::vector<double> qLeft = qLeftInitial;
+        std::vector<double> qRight = qRightInitial;
+
         yarp::os::Timer::TimerCallback callback = [&](const yarp::os::YarpTimerEvent & event)
         {
-            iCartesianControlLeftLeg->movi(pointsLeft[event.runCount]);
-            iCartesianControlRightLeg->movi(pointsRight[event.runCount]);
+            iCartesianSolverLeftLeg->invKin(pointsLeft[event.runCount], qLeft, qLeft);
+            iCartesianSolverRightLeg->invKin(pointsRight[event.runCount], qRight, qRight);
+
+            posdLeftLeg->setPositions(qLeft.data());
+            posdRightLeg->setPositions(qRight.data());
 
             return true;
         };
@@ -385,7 +552,7 @@ int main(int argc, char * argv[])
 
         if (timer.start())
         {
-            yarp::os::Time::delay(maxDuration);
+            yarp::os::SystemClock::delaySystem(maxDuration);
             timer.stop();
         }
     }

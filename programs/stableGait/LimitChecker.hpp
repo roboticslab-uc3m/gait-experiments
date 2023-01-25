@@ -5,7 +5,7 @@
 
 #include <vector>
 
-#include <ICartesianControl.h>
+#include <ICartesianSolver.h>
 
 #include "GaitSpecs.hpp"
 
@@ -17,7 +17,11 @@ namespace rl = roboticslab;
 class LimitChecker
 {
 public:
-    LimitChecker(FootSpec footSpec, double tolerance, rl::ICartesianControl * leftLeg, rl::ICartesianControl * rightLeg);
+    LimitChecker(FootSpec footSpec, double tolerance,
+                 rl::ICartesianSolver * leftLeg, rl::ICartesianSolver * rightLeg,
+                 const std::vector<double> & initialJointLeft, const std::vector<double> & initialJointRight,
+                 const std::vector<double> & initialCartLeft, const std::vector<double> & initialCartRight);
+
     void estimateParameters(GaitSpec & gaitSpec);
     void setReference(GaitSpec gaitSpec);
     bool updateSpecs(GaitSpec & gaitSpec);
@@ -26,11 +30,14 @@ private:
     double iterateSquat();
     double iterateStep(GaitSpec gaitSpec);
 
-    rl::ICartesianControl * leftLeg;
-    rl::ICartesianControl * rightLeg;
+    rl::ICartesianSolver * leftLeg;
+    rl::ICartesianSolver * rightLeg;
 
-    std::vector<double> initialLeft;
-    std::vector<double> initialRight;
+    const std::vector<double> & initialJointLeft;
+    const std::vector<double> & initialJointRight;
+
+    const std::vector<double> & initialCartLeft;
+    const std::vector<double> & initialCartRight;
 
     FootSpec footSpec;
     GaitSpec referenceGaitSpec;

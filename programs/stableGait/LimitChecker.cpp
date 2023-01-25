@@ -2,15 +2,19 @@
 
 #include "LimitChecker.hpp"
 
-LimitChecker::LimitChecker(FootSpec _footSpec, double _tolerance, rl::ICartesianControl * _leftLeg, rl::ICartesianControl * _rightLeg)
-    : leftLeg(_leftLeg),
+LimitChecker::LimitChecker(FootSpec _footSpec, double _tolerance,
+                           rl::ICartesianSolver * _leftLeg, rl::ICartesianSolver * _rightLeg,
+                           const std::vector<double> & _initialJointLeft, const std::vector<double> & _initialJointRight,
+                           const std::vector<double> & _initialCartLeft, const std::vector<double> & _initialCartRight)
+    : footSpec(_footSpec),
+      tolerance(_tolerance),
+      leftLeg(_leftLeg),
       rightLeg(_rightLeg),
-      footSpec(_footSpec),
-      tolerance(_tolerance)
-{
-    leftLeg->stat(initialLeft);
-    rightLeg->stat(initialRight);
-}
+      initialJointLeft(_initialJointLeft),
+      initialJointRight(_initialJointRight),
+      initialCartLeft(_initialCartLeft),
+      initialCartRight(_initialCartRight)
+{}
 
 void LimitChecker::estimateParameters(GaitSpec & gaitSpec)
 {
@@ -27,7 +31,7 @@ bool LimitChecker::updateSpecs(GaitSpec & gaitSpec)
 {
     gaitSpec.sep += tolerance;
 
-    if (gaitSpec.sep <= initialLeft[1] * 2)
+    if (gaitSpec.sep <= initialCartLeft[1] * 2)
     {
         return true;
     }
@@ -56,29 +60,29 @@ bool LimitChecker::updateSpecs(GaitSpec & gaitSpec)
 
 double LimitChecker::iterateSquat()
 {
-    std::vector<double> x = initialLeft;
-    std::vector<double> q;
+    std::vector<double> x = initialCartLeft;
+    std::vector<double> q = initialJointLeft;
 
     do
     {
         x[2] += tolerance;
     }
-    while (leftLeg->inv(x, q));
+    while (leftLeg->invKin(x, q, q));
 
-    return x[2] - initialLeft[2] - tolerance;
+    return x[2] - initialCartLeft[2] - tolerance;
 }
 
 double LimitChecker::iterateStep(GaitSpec gaitSpec)
 {
-    std::vector<double> x = initialRight;
+    std::vector<double> x = initialCartRight;
     x[1] = -(footSpec.margin + gaitSpec.sep + (footSpec.width / 2.0));
-    std::vector<double> q;
+    std::vector<double> q = initialJointRight;
 
     do
     {
         x[0] += tolerance;
     }
-    while (rightLeg->inv(x, q));
+    while (rightLeg->invKin(x, q, q));
 
     return (x[0] - tolerance) + footSpec.length - footSpec.margin - (footSpec.width / 2.0);
 }
