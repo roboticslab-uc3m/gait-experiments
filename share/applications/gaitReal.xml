@@ -3,7 +3,7 @@
 
     <module>
         <name>multipleanalogsensorsserver</name>
-        <parameters>--subdevice Jr3 --name /jr3 --period 5 --filter 2 --dextrorotary</parameters>
+        <parameters>--subdevice Jr3Pci --name /jr3 --period 5 --filter 2 --dextrorotary</parameters>
         <node>2.2.2.105</node>
         <deployer>yarpdev</deployer>
     </module>

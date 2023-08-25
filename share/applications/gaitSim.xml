@@ -2,13 +2,6 @@
     <name>gait-related apps (simulated)</name>
 
     <module>
-        <name>multipleanalogsensorsserver</name>
-        <parameters>--subdevice Jr3 --name /jr3 --period 5 --filter 2 --dextrorotary</parameters>
-        <node>2.2.2.105</node>
-        <deployer>yarpdev</deployer>
-    </module>
-
-    <module>
         <name>teoSim</name>
         <node>localhost</node>
     </module>
