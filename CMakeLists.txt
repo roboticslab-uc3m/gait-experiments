@@ -1,6 +1,3 @@
-# Copyright: Universidad Carlos III de Madrid (C) 2019.
-# CopyPolicy: Released under the terms of the GNU LGPL v2.1.
-
 cmake_minimum_required(VERSION 3.16)
 
 project(ROBOTICSLAB_GAIT_EXPERIMENTS LANGUAGES CXX)
@@ -31,7 +28,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake
 
 # Hard dependencies.
 find_package(YCM 0.11 REQUIRED)
-find_package(YARP 3.6 REQUIRED COMPONENTS os dev)
+find_package(YARP 3.7 REQUIRED COMPONENTS os dev)
 find_package(orocos_kdl 1.4 REQUIRED) # before kin-dyn due to ROS installation
 find_package(ROBOTICSLAB_KINEMATICS_DYNAMICS REQUIRED)
 
