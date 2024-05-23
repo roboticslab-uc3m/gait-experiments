@@ -69,7 +69,7 @@ namespace
         {
             auto H = trajectory->Pos(timerEvent.runCount * period);
             auto position = rl::KdlVectorConverter::frameToVector(H);
-            iCartesianControl->movi(position);
+            iCartesianControl->pose(position);
             return true;
         }
 
@@ -127,7 +127,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
+    if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
     {
         yError() << "Cannot preset streaming command (left leg)";
         return 1;
@@ -155,7 +155,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
+    if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
     {
         yError() << "Cannot preset streaming command (right leg)";
         return 1;

@@ -120,7 +120,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
+    if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
     {
         yError() << "Cannot preset streaming command (left leg)";
         return 1;
@@ -150,7 +150,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_MOVI))
+    if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
     {
         yError() << "Cannot preset streaming command (right leg)";
         return 1;
@@ -228,8 +228,8 @@ int main(int argc, char * argv[])
         KDL::Frame H_left = trajectoryLeftLeg.Pos(event.runCount * period);
         KDL::Frame H_right = trajectoryRightLeg.Pos(event.runCount * period);
 
-        iCartesianControlLeftLeg->movi(rl::KdlVectorConverter::frameToVector(H_left));
-        iCartesianControlRightLeg->movi(rl::KdlVectorConverter::frameToVector(H_right));
+        iCartesianControlLeftLeg->pose(rl::KdlVectorConverter::frameToVector(H_left));
+        iCartesianControlRightLeg->pose(rl::KdlVectorConverter::frameToVector(H_right));
 
         return true;
     };
