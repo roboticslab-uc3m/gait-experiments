@@ -107,8 +107,8 @@ int main(int argc, char * argv[])
 
     yarp::os::Property leftLegDeviceOptions {
         {"device", yarp::os::Value("CartesianControlClient")},
-        {"cartesianRemote", yarp::os::Value(robotPrefix + "/leftLeg/CartesianControl")},
-        {"cartesianLocal", yarp::os::Value("/squatAndBalance/leftLeg")}
+        {"remote", yarp::os::Value(robotPrefix + "/leftLeg/CartesianControl")},
+        {"local", yarp::os::Value("/squatAndBalance/leftLeg")}
     };
 
     yarp::dev::PolyDriver leftLegDevice(leftLegDeviceOptions);
@@ -135,8 +135,8 @@ int main(int argc, char * argv[])
 
     yarp::os::Property rightLegDeviceOptions {
         {"device", yarp::os::Value("CartesianControlClient")},
-        {"cartesianRemote", yarp::os::Value(robotPrefix + "/rightLeg/CartesianControl")},
-        {"cartesianLocal", yarp::os::Value("/squatAndBalance/rightLeg")}
+        {"remote", yarp::os::Value(robotPrefix + "/rightLeg/CartesianControl")},
+        {"local", yarp::os::Value("/squatAndBalance/rightLeg")}
     };
 
     yarp::dev::PolyDriver rightLegDevice(rightLegDeviceOptions);
