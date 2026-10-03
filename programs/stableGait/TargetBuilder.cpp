@@ -57,13 +57,13 @@ bool TargetBuilder::validate(Targets & vLeft, Targets & vRight)
 
     for (int i = 0; i < vLeft.size(); i++)
     {
-        if (!iCartLeft->inv(vLeft[i], q))
+        if (!iCartLeft->solvePose(vLeft[i], q))
         {
             yWarning() << "IK failing at left leg:" << vLeft[i][0] << vLeft[i][1] << vLeft[i][2] << vLeft[i][3] << vLeft[i][4] << vLeft[i][5];
             return false;
         }
 
-        if (!iCartRight->inv(vRight[i], q))
+        if (!iCartRight->solvePose(vRight[i], q))
         {
             yWarning() << "IK failing at right leg:" << vRight[i][0] << vRight[i][1] << vRight[i][2] << vRight[i][3] << vRight[i][4] << vRight[i][5];
             return false;

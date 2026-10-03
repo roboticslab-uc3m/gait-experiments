@@ -8,8 +8,13 @@ LimitChecker::LimitChecker(FootSpec _footSpec, double _tolerance, rl::ICartesian
       footSpec(_footSpec),
       tolerance(_tolerance)
 {
-    leftLeg->stat(initialLeft);
-    rightLeg->stat(initialRight);
+    rl::ICartesianControl::ControllerState state;
+
+    leftLeg->getState(state);
+    initialLeft = state.x;
+
+    rightLeg->getState(state);
+    initialRight = state.x;
 }
 
 void LimitChecker::estimateParameters(GaitSpec & gaitSpec)
@@ -63,7 +68,7 @@ double LimitChecker::iterateSquat()
     {
         x[2] += tolerance;
     }
-    while (leftLeg->inv(x, q));
+    while (leftLeg->solvePose(x, q));
 
     return x[2] - initialLeft[2] - tolerance;
 }
@@ -78,7 +83,7 @@ double LimitChecker::iterateStep(GaitSpec gaitSpec)
     {
         x[0] += tolerance;
     }
-    while (rightLeg->inv(x, q));
+    while (rightLeg->solvePose(x, q));
 
     return (x[0] - tolerance) + footSpec.length - footSpec.margin - (footSpec.width / 2.0);
 }

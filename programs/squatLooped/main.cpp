@@ -120,7 +120,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
+    if (!iCartesianControlLeftLeg->setParameter(rl::ICartesianControl::Config::STREAMING_CMD, static_cast<yarp::conf::vocab32_t>(rl::ICartesianControl::Streaming::POSE)))
     {
         yError() << "Cannot preset streaming command (left leg)";
         return 1;
@@ -150,7 +150,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
+    if (!iCartesianControlRightLeg->setParameter(rl::ICartesianControl::Config::STREAMING_CMD, static_cast<yarp::conf::vocab32_t>(rl::ICartesianControl::Streaming::POSE)))
     {
         yError() << "Cannot preset streaming command (right leg)";
         return 1;
@@ -165,15 +165,15 @@ int main(int argc, char * argv[])
 
     // Configure trajectories (left leg).
 
-    std::vector<double> x_leftLeg;
+    rl::ICartesianControl::ControllerState stateLeft;
 
-    if (!iCartesianControlLeftLeg->stat(x_leftLeg))
+    if (!iCartesianControlLeftLeg->getState(stateLeft))
     {
         yError() << "stat() failed (left leg)";
         return 1;
     }
 
-    KDL::Frame H_leftLeg_start = rl::KdlVectorConverter::vectorToFrame(x_leftLeg);
+    KDL::Frame H_leftLeg_start = rl::KdlVectorConverter::vectorToFrame(stateLeft.x);
     KDL::Frame H_leftLeg_end = H_leftLeg_start;
     H_leftLeg_end.p.z(H_leftLeg_end.p.z() + z);
 
@@ -185,15 +185,15 @@ int main(int argc, char * argv[])
 
     // Configure trajectories (right leg).
 
-    std::vector<double> x_rightLeg;
+    rl::ICartesianControl::ControllerState stateRight;
 
-    if (!iCartesianControlRightLeg->stat(x_rightLeg))
+    if (!iCartesianControlRightLeg->getState(stateRight))
     {
         yError() << "stat() failed (right leg)";
         return 1;
     }
 
-    KDL::Frame H_rightLeg_start = rl::KdlVectorConverter::vectorToFrame(x_rightLeg);
+    KDL::Frame H_rightLeg_start = rl::KdlVectorConverter::vectorToFrame(stateRight.x);
     KDL::Frame H_rightLeg_end = H_rightLeg_start;
     H_rightLeg_end.p.z(H_rightLeg_end.p.z() + z);
 

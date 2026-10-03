@@ -204,7 +204,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
+    if (!iCartesianControlLeftLeg->setParameter(rl::ICartesianControl::Config::STREAMING_CMD, static_cast<yarp::conf::vocab32_t>(rl::ICartesianControl::Streaming::POSE)))
     {
         yError() << "Cannot preset streaming command (left leg)";
         return 1;
@@ -234,7 +234,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
+    if (!iCartesianControlRightLeg->setParameter(rl::ICartesianControl::Config::STREAMING_CMD, static_cast<yarp::conf::vocab32_t>(rl::ICartesianControl::Streaming::POSE)))
     {
         yError() << "Cannot preset streaming command (right leg)";
         return 1;
@@ -242,16 +242,16 @@ int main(int argc, char * argv[])
 
     // Initialize specs and components.
 
-    std::vector<double> x_leftInitial;
+    rl::ICartesianControl::ControllerState stateLeft;
 
-    if (!iCartesianControlLeftLeg->stat(x_leftInitial))
+    if (!iCartesianControlLeftLeg->getState(stateLeft))
     {
         yError() << "Cannot stat left leg";
         return 1;
     }
 
-    x_leftInitial[2] += KDL::epsilon; // initial pose is hard to attain
-    KDL::Frame H_leftInitial = rl::KdlVectorConverter::vectorToFrame(x_leftInitial);
+    stateLeft.x[2] += KDL::epsilon; // initial pose is hard to attain
+    KDL::Frame H_leftInitial = rl::KdlVectorConverter::vectorToFrame(stateLeft.x);
 
     FootSpec footSpec;
     footSpec.length = footLength;

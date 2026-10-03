@@ -127,7 +127,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlLeftLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
+    if (!iCartesianControlLeftLeg->setParameter(rl::ICartesianControl::Config::STREAMING_CMD, static_cast<yarp::conf::vocab32_t>(rl::ICartesianControl::Streaming::POSE)))
     {
         yError() << "Cannot preset streaming command (left leg)";
         return 1;
@@ -155,7 +155,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    if (!iCartesianControlRightLeg->setParameter(VOCAB_CC_CONFIG_STREAMING_CMD, VOCAB_CC_POSE))
+    if (!iCartesianControlRightLeg->setParameter(rl::ICartesianControl::Config::STREAMING_CMD, static_cast<yarp::conf::vocab32_t>(rl::ICartesianControl::Streaming::POSE)))
     {
         yError() << "Cannot preset streaming command (right leg)";
         return 1;
@@ -163,27 +163,27 @@ int main(int argc, char * argv[])
 
     // Configure trajectories.
 
-    std::vector<double> x_leftLeg;
+    rl::ICartesianControl::ControllerState stateLeftLeg;
 
-    if (!iCartesianControlLeftLeg->stat(x_leftLeg))
+    if (!iCartesianControlLeftLeg->getState(stateLeftLeg))
     {
-        yError() << "stat() failed (left leg)";
+        yError() << "getState() failed (left leg)";
         return 1;
     }
 
-    std::vector<double> xd_leftLeg(x_leftLeg);
+    std::vector<double> xd_leftLeg(stateLeftLeg.x);
     xd_leftLeg[0] += x;
     xd_leftLeg[1] -= y;
     xd_leftLeg[2] += z;
 
 
-    yInfo() << "Current (left):" <<  x_leftLeg[0] << x_leftLeg[1] << x_leftLeg[2];
+    yInfo() << "Current (left):" << stateLeftLeg.x[0] << stateLeftLeg.x[1] << stateLeftLeg.x[2];
     yInfo() << "Desired (left):" << xd_leftLeg[0] << xd_leftLeg[1] << xd_leftLeg[2];
 
     std::unique_ptr<KDL::Trajectory> trajectoryLeftLeg;
 
     {
-        auto H_base_start = rl::KdlVectorConverter::vectorToFrame(x_leftLeg);
+        auto H_base_start = rl::KdlVectorConverter::vectorToFrame(stateLeftLeg.x);
         auto H_base_end = rl::KdlVectorConverter::vectorToFrame(xd_leftLeg);
 
         auto * interpolator = new KDL::RotationalInterpolation_SingleAxis();
@@ -193,27 +193,27 @@ int main(int argc, char * argv[])
         trajectoryLeftLeg = std::make_unique<KDL::Trajectory_Segment>(path, profile, duration);
     }
 
-    std::vector<double> x_rightLeg;
+    rl::ICartesianControl::ControllerState stateRightLeg;
 
-    if (!iCartesianControlRightLeg->stat(x_rightLeg))
+    if (!iCartesianControlRightLeg->getState(stateRightLeg))
     {
         yError() << "stat() failed (right leg)";
         return 1;
     }
 
-    std::vector<double> xd_rightLeg(x_rightLeg);
+    std::vector<double> xd_rightLeg(stateRightLeg.x);
     xd_rightLeg[0] += x;
     xd_rightLeg[1] -= y;
     xd_rightLeg[2] += z;
 
 
-    yInfo() << "Current (right):" << x_rightLeg[0] << x_rightLeg[1] << x_rightLeg[2];
+    yInfo() << "Current (right):" << stateRightLeg.x[0] << stateRightLeg.x[1] << stateRightLeg.x[2];
     yInfo() << "Desired (right):" << xd_rightLeg[0] << xd_rightLeg[1] << xd_rightLeg[2];
 
     std::unique_ptr<KDL::Trajectory> trajectoryRightLeg;
 
     {
-        auto H_base_start = rl::KdlVectorConverter::vectorToFrame(x_rightLeg);
+        auto H_base_start = rl::KdlVectorConverter::vectorToFrame(stateRightLeg.x);
         auto H_base_end = rl::KdlVectorConverter::vectorToFrame(xd_rightLeg);
 
         auto * interpolator = new KDL::RotationalInterpolation_SingleAxis();

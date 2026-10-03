@@ -9,11 +9,13 @@ on:
   workflow_dispatch:
 
 env:
-  CMAKE_CCACHE_LAUNCHER: -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
+  CMAKE_BUILD_TYPE: Debug
 
 jobs:
   maybe_skip:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       should_skip: ${{steps.skip_check.outputs.should_skip}}
     steps:
@@ -31,11 +33,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
+        os: [ubuntu-24.04, ubuntu-26.04]
         robotology:
-        - { yarp: yarp-3.8, cmake: 3.16.x }
-        - { yarp: yarp-3.9, cmake: 3.16.x }
-        - { yarp: master, cmake: 3.19.x }
+        - { yarp: yarp-3.12, cmake: 3.22.x }
+        - { yarp: yarp-4.0, cmake: 3.22.x }
+        - { yarp: master, cmake: 3.22.x }
         compiler:
         - { cc: gcc, cxx: g++ }
         - { cc: clang, cxx: clang++ }
@@ -46,35 +48,29 @@ jobs:
 
     steps:
     - name: Check out gait-experiments
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Check out YCM
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         repository: robotology/ycm
         path: .deps/ycm
 
     - name: Check out YARP
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         repository: robotology/yarp
         ref: ${{matrix.robotology.yarp}}
         path: .deps/yarp
 
-    - name: Check out Orocos KDL
-      uses: actions/checkout@v4
-      with:
-        repository: orocos/orocos_kinematics_dynamics
-        path: .deps/kdl
-
     - name: Check out kinematics-dynamics
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         repository: roboticslab-uc3m/kinematics-dynamics
         path: .deps/kinematics-dynamics
 
     - name: Install dependencies via apt
-      run: sudo apt-get install -qq ccache libeigen3-dev
+      run: sudo apt-get install -qq ccache liborocos-kdl-dev
 
     - name: Set up CMake
       uses: jwlawson/actions-setup-cmake@v2
@@ -91,6 +87,11 @@ jobs:
         echo "CC=${{matrix.compiler.cc}}" >> $GITHUB_ENV
         echo "CXX=${{matrix.compiler.cxx}}" >> $GITHUB_ENV
 
+    - name: Set environment variables (YARP next)
+      if: ${{matrix.robotology.yarp == 'master'}}
+      run: |
+        echo "CXXFLAGS=-DYARP_NEXT" >> $GITHUB_ENV
+
     - name: Build YCM
       run: |
         cmake -S .deps/ycm -B .deps/ycm/build
@@ -99,24 +100,18 @@ jobs:
 
     - name: Build YARP
       run: |
-        cmake -S .deps/yarp -B .deps/yarp/build $CMAKE_CCACHE_LAUNCHER -DSKIP_ACE=ON -DYARP_DISABLE_VERSION_SOURCE=ON -DENABLE_yarpmod_fakeMotionControl=ON
+        cmake -S .deps/yarp -B .deps/yarp/build -DSKIP_ACE=ON -DYARP_DISABLE_VERSION_SOURCE=ON -DENABLE_yarpmod_fakeMotionControl=ON
         cmake --build .deps/yarp/build
         sudo cmake --install .deps/yarp/build
 
-    - name: Build Orocos KDL
-      run: |
-        cmake -S .deps/kdl/orocos_kdl -B .deps/kdl/orocos_kdl/build $CMAKE_CCACHE_LAUNCHER
-        cmake --build .deps/kdl/orocos_kdl/build
-        sudo cmake --install .deps/kdl/orocos_kdl/build
-
     - name: Build kinematics-dynamics
       run: |
-        cmake -S .deps/kinematics-dynamics -B .deps/kinematics-dynamics/build $CMAKE_CCACHE_LAUNCHER
+        cmake -S .deps/kinematics-dynamics -B .deps/kinematics-dynamics/build
         cmake --build .deps/kinematics-dynamics/build
         sudo cmake --install .deps/kinematics-dynamics/build
 
     - name: Configure gait-experiments
-      run: cmake -S . -B ./build $CMAKE_CCACHE_LAUNCHER
+      run: cmake -S . -B ./build
 
     - name: Compile gait-experiments
       run: cmake --build ./build
